@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { SECTIONS } from '../../sections/registry'
 import { useJobStore } from '../../store/useJobStore'
 import { JobInputModeToggle } from './JobInputModeToggle'
+import { WholeJobExportButton } from './WholeJobExportButton'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const jobName = useJobStore((s) => s.jobName)
@@ -84,6 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="max-w-sm pb-1 text-xs leading-relaxed text-ink-soft">
             One take-off model. Every calculator reads span, length, footprint, eaves and openings from it.
           </p>
+          <WholeJobExportButton />
           <button
             type="button"
             onClick={() => {

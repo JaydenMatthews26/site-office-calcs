@@ -20,7 +20,14 @@ import type { JoineryItem } from '../types/modules'
 import type { JobState } from '../types/job'
 import { drawPlanBlock, ensureSpace, finishPdf, heading, line, noteList, startSectionPdf } from './common'
 
-function pack(job: JobState, g: DerivedGeometry, subtitle: string, slug: string, draw: (doc: jsPDF, y: number) => number, notes: string[]) {
+function pack(
+  job: JobState,
+  g: DerivedGeometry,
+  subtitle: string,
+  slug: string,
+  draw: (doc: jsPDF, y: number) => number,
+  notes: string[],
+) {
   const { doc, y: y0 } = startSectionPdf(job, subtitle)
   let y = drawPlanBlock(doc, y0, g)
   y = draw(doc, y + 4)
@@ -28,22 +35,22 @@ function pack(job: JobState, g: DerivedGeometry, subtitle: string, slug: string,
   finishPdf(doc, job, slug)
 }
 
-export function exportStructurePdf(job: JobState, g: DerivedGeometry, r: StructureResult) {
-  pack(job, g, 'Building structure', 'structure', (doc, y) => {
-    y = heading(doc, y, job.structure.frame === 'timber' ? 'Timber frame' : 'Masonry')
-    y = line(doc, y, 'Gross / net elevation', `${formatM2(r.grossElevationM2)} / ${formatM2(r.netElevationM2)}`)
-    y = line(doc, y, 'Inner / outer units', `${r.innerUnits} / ${r.outerUnits}`)
-    y = line(doc, y, 'Mortar / wall ties', `${formatM3(r.mortarM3)} / ${r.wallTies}`)
-    if (r.renderM2) y = line(doc, y, 'Render', `${formatM2(r.renderM2)}  ·  ${formatM3(r.renderM3)}`)
-    if (r.timberStuds) y = line(doc, y, 'Studs / plates / sheathing', `${r.timberStuds} / ${r.timberPlatesM.toFixed(1)} m / ${formatM2(r.sheathingM2)}`)
-    if (r.seFlag) y = line(doc, y, 'SE flag', 'Steel-brick hybrid — engineer sign-off')
-    return y
-  }, r.notes)
+export function drawStructureTakeoff(doc: jsPDF, y: number, job: JobState, r: StructureResult): number {
+  y = heading(doc, y, job.structure.frame === 'timber' ? 'Timber frame' : 'Masonry')
+  y = line(doc, y, 'Gross / net elevation', `${formatM2(r.grossElevationM2)} / ${formatM2(r.netElevationM2)}`)
+  y = line(doc, y, 'Inner / outer units', `${r.innerUnits} / ${r.outerUnits}`)
+  y = line(doc, y, 'Mortar / wall ties', `${formatM3(r.mortarM3)} / ${r.wallTies}`)
+  if (r.renderM2) y = line(doc, y, 'Render', `${formatM2(r.renderM2)}  ·  ${formatM3(r.renderM3)}`)
+  if (r.timberStuds) y = line(doc, y, 'Studs / plates / sheathing', `${r.timberStuds} / ${r.timberPlatesM.toFixed(1)} m / ${formatM2(r.sheathingM2)}`)
+  if (r.seFlag) y = line(doc, y, 'SE flag', 'Steel-brick hybrid — engineer sign-off')
+  return y
 }
 
-export function exportJoineryPdf(job: JobState, g: DerivedGeometry, r: JoineryResult) {
-  const { doc, y: y0 } = startSectionPdf(job, 'Windows & doors schedule')
-  let y = drawPlanBlock(doc, y0, g)
+export function exportStructurePdf(job: JobState, g: DerivedGeometry, r: StructureResult) {
+  pack(job, g, 'Building structure', 'structure', (doc, y) => drawStructureTakeoff(doc, y, job, r), r.notes)
+}
+
+export function drawJoineryTakeoff(doc: jsPDF, y: number, r: JoineryResult): number {
   y = heading(doc, y + 2, 'Counts')
   y = line(doc, y, 'GF windows / doors', `${r.gfWindows} / ${r.gfDoors}`)
   y = line(doc, y, 'FF windows / rooflights', `${r.ffWindows} / ${r.rooflights}`)
@@ -65,6 +72,13 @@ export function exportJoineryPdf(job: JobState, g: DerivedGeometry, r: JoineryRe
       }
     }
   }
+  return y
+}
+
+export function exportJoineryPdf(job: JobState, g: DerivedGeometry, r: JoineryResult) {
+  const { doc, y: y0 } = startSectionPdf(job, 'Windows & doors schedule')
+  let y = drawPlanBlock(doc, y0, g)
+  y = drawJoineryTakeoff(doc, y, r)
   finishPdf(doc, job, 'joinery')
 }
 
@@ -103,164 +117,190 @@ function drawJoineryMock(doc: jsPDF, y: number, it: JoineryItem): number {
   return y + h + extra + 10
 }
 
+export function drawFoundationsTakeoff(doc: jsPDF, y: number, job: JobState, r: FoundationsResult): number {
+  y = heading(doc, y, job.foundations.type === 'raft' ? 'Raft' : 'Strip')
+  y = line(doc, y, 'Run / width / depth', `${formatM(r.runMm / 1000)} / ${r.widthMm} mm / ${r.depthMm} mm`)
+  y = line(doc, y, 'Concrete / excavation / spoil', `${formatM3(r.concreteM3)} / ${formatM3(r.excavationM3)} / ${formatM3(r.spoilM3)}`)
+  y = line(doc, y, 'DPC', `${r.dpcLinearM.toFixed(1)} m  ·  ${job.foundations.dpcMaterial} @ ${r.dpcHeightMm} mm`)
+  if (r.seFlag) y = line(doc, y, 'SE flag', 'Non-standard / underpinning')
+  return y
+}
+
 export function exportFoundationsPdf(job: JobState, g: DerivedGeometry, r: FoundationsResult) {
-  pack(job, g, 'Foundations to DPC', 'foundations', (doc, y) => {
-    y = heading(doc, y, job.foundations.type === 'raft' ? 'Raft' : 'Strip')
-    y = line(doc, y, 'Run / width / depth', `${formatM(r.runMm / 1000)} / ${r.widthMm} mm / ${r.depthMm} mm`)
-    y = line(doc, y, 'Concrete / excavation / spoil', `${formatM3(r.concreteM3)} / ${formatM3(r.excavationM3)} / ${formatM3(r.spoilM3)}`)
-    y = line(doc, y, 'DPC', `${r.dpcLinearM.toFixed(1)} m  ·  ${job.foundations.dpcMaterial} @ ${r.dpcHeightMm} mm`)
-    if (r.seFlag) y = line(doc, y, 'SE flag', 'Non-standard / underpinning')
-    return y
-  }, r.notes)
+  pack(job, g, 'Foundations to DPC', 'foundations', (doc, y) => drawFoundationsTakeoff(doc, y, job, r), r.notes)
+}
+
+export function drawGroundFloorTakeoff(doc: jsPDF, y: number, job: JobState, r: GroundFloorResult): number {
+  y = heading(doc, y, job.groundFloor.type)
+  y = line(doc, y, 'Area', formatM2(r.areaM2))
+  y = line(doc, y, 'Concrete / insulation / DPM', `${formatM3(r.concreteM3)} / ${formatM3(r.insulationM3)} / ${formatM2(r.dpmM2)}`)
+  y = line(doc, y, 'Beams / joists', `${r.beams} / ${r.joists} (${r.joistLinearM.toFixed(1)} m)`)
+  return y
 }
 
 export function exportGroundFloorPdf(job: JobState, g: DerivedGeometry, r: GroundFloorResult) {
-  pack(job, g, 'Ground floor structure', 'ground-floor', (doc, y) => {
-    y = heading(doc, y, job.groundFloor.type)
-    y = line(doc, y, 'Area', formatM2(r.areaM2))
-    y = line(doc, y, 'Concrete / insulation / DPM', `${formatM3(r.concreteM3)} / ${formatM3(r.insulationM3)} / ${formatM2(r.dpmM2)}`)
-    y = line(doc, y, 'Beams / joists', `${r.beams} / ${r.joists} (${r.joistLinearM.toFixed(1)} m)`)
-    return y
-  }, r.notes)
+  pack(job, g, 'Ground floor structure', 'ground-floor', (doc, y) => drawGroundFloorTakeoff(doc, y, job, r), r.notes)
+}
+
+export function drawPartitionsTakeoff(doc: jsPDF, y: number, job: JobState, r: PartitionResult): number {
+  y = heading(doc, y, job.partitions.type)
+  y = line(doc, y, 'Length / area', `${formatM(r.lengthM)} / ${formatM2(r.areaM2)}`)
+  y = line(doc, y, 'Studs / plates / blocks', `${r.studs} / ${r.platesM.toFixed(1)} m / ${r.blocks}`)
+  y = line(doc, y, 'PB sheets', String(r.plasterboardSheets))
+  y = line(doc, y, 'Doors / lintels / doubled studs', `${r.doorsOnPartitions} / ${r.lintels} / ${r.doubledStuds}`)
+  return y
 }
 
 export function exportPartitionsPdf(job: JobState, g: DerivedGeometry, r: PartitionResult) {
-  pack(job, g, 'Internal walls', 'partitions', (doc, y) => {
-    y = heading(doc, y, job.partitions.type)
-    y = line(doc, y, 'Length / area', `${formatM(r.lengthM)} / ${formatM2(r.areaM2)}`)
-    y = line(doc, y, 'Studs / plates / blocks', `${r.studs} / ${r.platesM.toFixed(1)} m / ${r.blocks}`)
-    y = line(doc, y, 'PB sheets', String(r.plasterboardSheets))
-    y = line(doc, y, 'Doors / lintels / doubled studs', `${r.doorsOnPartitions} / ${r.lintels} / ${r.doubledStuds}`)
-    return y
-  }, r.notes)
+  pack(job, g, 'Internal walls', 'partitions', (doc, y) => drawPartitionsTakeoff(doc, y, job, r), r.notes)
+}
+
+export function drawFirstFloorTakeoff(doc: jsPDF, y: number, r: FirstFloorResult): number {
+  y = heading(doc, y, 'Joists')
+  y = line(doc, y, 'Count / linear', `${r.joists} / ${r.joistLinearM.toFixed(1)} m`)
+  y = line(doc, y, 'Noggins / strutting / herringbone', `${r.nogginsM.toFixed(1)} / ${r.struttingM.toFixed(1)} / ${r.herringboneM.toFixed(1)} m`)
+  y = line(doc, y, 'Trimmers', `${r.trimmers}  ·  ${r.trimmerLengthMm} mm combined`)
+  return y
 }
 
 export function exportFirstFloorPdf(job: JobState, g: DerivedGeometry, r: FirstFloorResult) {
-  pack(job, g, 'First floor structure', 'first-floor', (doc, y) => {
-    y = heading(doc, y, 'Joists')
-    y = line(doc, y, 'Count / linear', `${r.joists} / ${r.joistLinearM.toFixed(1)} m`)
-    y = line(doc, y, 'Noggins / strutting / herringbone', `${r.nogginsM.toFixed(1)} / ${r.struttingM.toFixed(1)} / ${r.herringboneM.toFixed(1)} m`)
-    y = line(doc, y, 'Trimmers', `${r.trimmers}  ·  ${r.trimmerLengthMm} mm combined`)
-    return y
-  }, r.notes)
+  pack(job, g, 'First floor structure', 'first-floor', (doc, y) => drawFirstFloorTakeoff(doc, y, r), r.notes)
+}
+
+export function drawStairsTakeoff(doc: jsPDF, y: number, job: JobState, r: StairsResult): number {
+  y = heading(doc, y, job.stairs.plan)
+  y = line(doc, y, 'Rise / going / pitch', `${r.riseMm.toFixed(1)} mm / ${r.goingMm} mm / ${r.pitchDeg.toFixed(1)}°`)
+  y = line(doc, y, 'Risers / treads / 2R+G', `${r.risers} / ${r.treads} / ${r.twoRplusG.toFixed(0)} mm`)
+  y = line(doc, y, 'Part K-style check', r.pass ? 'PASS' : 'FAIL')
+  if (r.suggestion) y = line(doc, y, 'Suggestion', r.suggestion)
+  y = line(doc, y, 'Strings / handrail / balusters / newels', `${r.strings} × ${r.stringLengthMm.toFixed(0)} mm / ${r.handrailM.toFixed(2)} m / ${r.balusters} / ${r.newels}`)
+  y = heading(doc, y + 2, 'Cut list')
+  for (const row of r.cutList) {
+    y = ensureSpace(doc, y)
+    y = line(doc, y, `${row.qty} × ${row.item}`, `${row.lengthMm.toFixed(0)} mm  ·  ${row.section}`)
+  }
+  return y
 }
 
 export function exportStairsPdf(job: JobState, g: DerivedGeometry, r: StairsResult) {
-  pack(job, g, 'Stairs', 'stairs', (doc, y) => {
-    y = heading(doc, y, job.stairs.plan)
-    y = line(doc, y, 'Rise / going / pitch', `${r.riseMm.toFixed(1)} mm / ${r.goingMm} mm / ${r.pitchDeg.toFixed(1)}°`)
-    y = line(doc, y, 'Risers / treads / 2R+G', `${r.risers} / ${r.treads} / ${r.twoRplusG.toFixed(0)} mm`)
-    y = line(doc, y, 'Part K-style check', r.pass ? 'PASS' : 'FAIL')
-    if (r.suggestion) y = line(doc, y, 'Suggestion', r.suggestion)
-    y = line(doc, y, 'Strings / handrail / balusters / newels', `${r.strings} × ${r.stringLengthMm.toFixed(0)} mm / ${r.handrailM.toFixed(2)} m / ${r.balusters} / ${r.newels}`)
-    y = heading(doc, y + 2, 'Cut list')
-    for (const row of r.cutList) {
-      y = ensureSpace(doc, y)
-      y = line(doc, y, `${row.qty} × ${row.item}`, `${row.lengthMm.toFixed(0)} mm  ·  ${row.section}`)
-    }
-    return y
-  }, r.notes)
+  pack(job, g, 'Stairs', 'stairs', (doc, y) => drawStairsTakeoff(doc, y, job, r), r.notes)
+}
+
+export function drawExternalWallsTakeoff(doc: jsPDF, y: number, r: ExternalWallResult): number {
+  y = heading(doc, y, 'Skins & cavity')
+  y = line(doc, y, 'Net elevation / insulation', `${formatM2(r.netElevationM2)} / ${formatM3(r.insulationM3)}`)
+  y = line(doc, y, 'Inner blocks / outer units', `${r.innerBlocks} / ${r.outerUnits}`)
+  y = line(doc, y, 'Cavity barriers / fire stops', `${r.cavityBarriersM.toFixed(1)} m / ${r.fireStopsM.toFixed(1)} m`)
+  y = heading(doc, y + 2, 'Lintel schedule')
+  for (const L of r.lintels) {
+    y = ensureSpace(doc, y)
+    y = line(doc, y, L.code, `${L.kind}  ${L.lengthMm} mm  ·  padstones ${L.padstones}`)
+  }
+  return y
 }
 
 export function exportExternalWallsPdf(job: JobState, g: DerivedGeometry, r: ExternalWallResult) {
-  pack(job, g, 'External walls above DPC', 'external-walls', (doc, y) => {
-    y = heading(doc, y, 'Skins & cavity')
-    y = line(doc, y, 'Net elevation / insulation', `${formatM2(r.netElevationM2)} / ${formatM3(r.insulationM3)}`)
-    y = line(doc, y, 'Inner blocks / outer units', `${r.innerBlocks} / ${r.outerUnits}`)
-    y = line(doc, y, 'Cavity barriers / fire stops', `${r.cavityBarriersM.toFixed(1)} m / ${r.fireStopsM.toFixed(1)} m`)
-    y = heading(doc, y + 2, 'Lintel schedule')
-    for (const L of r.lintels) {
-      y = ensureSpace(doc, y)
-      y = line(doc, y, L.code, `${L.kind}  ${L.lengthMm} mm  ·  padstones ${L.padstones}`)
-    }
-    return y
-  }, r.notes)
+  pack(job, g, 'External walls above DPC', 'external-walls', (doc, y) => drawExternalWallsTakeoff(doc, y, r), r.notes)
+}
+
+export function drawFinishesTakeoff(doc: jsPDF, y: number, r: FinishesResult): number {
+  y = heading(doc, y, 'Areas')
+  y = line(doc, y, 'Walls / ceiling', `${formatM2(r.wallM2)} / ${formatM2(r.ceilingM2)}`)
+  y = line(doc, y, 'PB sheets / skim / compound', `${r.pbSheets} / ${formatM2(r.skimM2)} / ${r.compoundBags} bags`)
+  y = line(doc, y, 'Paint', `${r.paintLitres.toFixed(1)} L  ·  ${r.paintTins} tins`)
+  y = line(doc, y, 'Coving', formatM(r.covingM))
+  return y
 }
 
 export function exportFinishesPdf(job: JobState, g: DerivedGeometry, r: FinishesResult) {
-  pack(job, g, 'Internal finishes', 'finishes', (doc, y) => {
-    y = heading(doc, y, 'Areas')
-    y = line(doc, y, 'Walls / ceiling', `${formatM2(r.wallM2)} / ${formatM2(r.ceilingM2)}`)
-    y = line(doc, y, 'PB sheets / skim / compound', `${r.pbSheets} / ${formatM2(r.skimM2)} / ${r.compoundBags} bags`)
-    y = line(doc, y, 'Paint', `${r.paintLitres.toFixed(1)} L  ·  ${r.paintTins} tins`)
-    y = line(doc, y, 'Coving', formatM(r.covingM))
-    return y
-  }, r.notes)
+  pack(job, g, 'Internal finishes', 'finishes', (doc, y) => drawFinishesTakeoff(doc, y, r), r.notes)
+}
+
+export function drawSkirtingTakeoff(doc: jsPDF, y: number, r: SkirtingResult): number {
+  y = heading(doc, y, `${r.profile} · ${r.material}`)
+  y = line(doc, y, 'Skirting', `${formatM(r.skirtingM)}  ·  ${r.skirtingLengths} lengths`)
+  y = line(doc, y, 'Architrave', `${formatM(r.architraveM)}  ·  ${r.architraveLengths} lengths`)
+  return y
 }
 
 export function exportSkirtingPdf(job: JobState, g: DerivedGeometry, r: SkirtingResult) {
-  pack(job, g, 'Skirting & architrave', 'skirting', (doc, y) => {
-    y = heading(doc, y, `${r.profile} · ${r.material}`)
-    y = line(doc, y, 'Skirting', `${formatM(r.skirtingM)}  ·  ${r.skirtingLengths} lengths`)
-    y = line(doc, y, 'Architrave', `${formatM(r.architraveM)}  ·  ${r.architraveLengths} lengths`)
-    return y
-  }, r.notes)
+  pack(job, g, 'Skirting & architrave', 'skirting', (doc, y) => drawSkirtingTakeoff(doc, y, r), r.notes)
+}
+
+export function drawFloorCoverTakeoff(doc: jsPDF, y: number, job: JobState, r: FloorCoverResult): number {
+  y = heading(doc, y, `${job.floorCover.kind}  ·  ${r.mode === 'room-by-room' ? 'room-by-room' : 'whole house'}`)
+  y = line(doc, y, 'Floor / wall area', `${formatM2(r.floorM2)} / ${formatM2(r.wallM2)}`)
+  y = line(doc, y, 'Tiles / m² / count', `${r.tilesPerM2.toFixed(2)} / ${r.tiles}  (+${job.floorCover.wastePct}% waste)`)
+  y = line(doc, y, 'Grout / adhesive bags', `${r.groutBags} / ${r.adhesiveBags}`)
+  if (r.rooms.length) {
+    y = heading(doc, y + 2, 'Rooms')
+    for (const room of r.rooms) {
+      y = ensureSpace(doc, y)
+      y = line(
+        doc,
+        y,
+        room.name,
+        `${formatM2(room.floorM2)} floor  ·  ${formatM2(room.wallNetM2)} wall  ·  ${formatM2(room.areaM2)} net`,
+      )
+    }
+  }
+  return y
 }
 
 export function exportFloorCoverPdf(job: JobState, g: DerivedGeometry, r: FloorCoverResult) {
-  pack(job, g, 'Floor coverings', 'floor-coverings', (doc, y) => {
-    y = heading(doc, y, `${job.floorCover.kind}  ·  ${r.mode === 'room-by-room' ? 'room-by-room' : 'whole house'}`)
-    y = line(doc, y, 'Floor / wall area', `${formatM2(r.floorM2)} / ${formatM2(r.wallM2)}`)
-    y = line(doc, y, 'Tiles / m² / count', `${r.tilesPerM2.toFixed(2)} / ${r.tiles}  (+${job.floorCover.wastePct}% waste)`)
-    y = line(doc, y, 'Grout / adhesive bags', `${r.groutBags} / ${r.adhesiveBags}`)
-    if (r.rooms.length) {
-      y = heading(doc, y + 2, 'Rooms')
-      for (const room of r.rooms) {
-        y = ensureSpace(doc, y)
-        y = line(
-          doc,
-          y,
-          room.name,
-          `${formatM2(room.floorM2)} floor  ·  ${formatM2(room.wallNetM2)} wall  ·  ${formatM2(room.areaM2)} net`,
-        )
-      }
-    }
-    return y
-  }, r.notes)
+  pack(job, g, 'Floor coverings', 'floor-coverings', (doc, y) => drawFloorCoverTakeoff(doc, y, job, r), r.notes)
+}
+
+export function drawMepTakeoff(doc: jsPDF, y: number, r: MepResult): number {
+  y = heading(doc, y, 'Plumbing')
+  y = line(doc, y, 'H / C pipe', `${r.hotM.toFixed(1)} m / ${r.coldM.toFixed(1)} m`)
+  y = line(doc, y, 'Fittings / radiators / boiler', `${r.fittings} / ${r.radiators} / ${r.boilerKw} kW`)
+  y = heading(doc, y + 2, 'Electrics')
+  y = line(doc, y, 'Sockets / lights / CU ways', `${r.sockets} / ${r.lights} / ${r.cuWays}`)
+  y = line(doc, y, '2.5 / 1.5 / 6 mm²', `${r.cable25M.toFixed(0)} / ${r.cable15M.toFixed(0)} / ${r.cable6M.toFixed(0)} m`)
+  y = line(doc, y, 'Installed range', `${formatGBP(r.installedLowGbp)} – ${formatGBP(r.installedHighGbp)}`)
+  return y
 }
 
 export function exportMepPdf(job: JobState, g: DerivedGeometry, r: MepResult) {
-  pack(job, g, 'Plumbing & electrics (guide)', 'mep', (doc, y) => {
-    y = heading(doc, y, 'Plumbing')
-    y = line(doc, y, 'H / C pipe', `${r.hotM.toFixed(1)} m / ${r.coldM.toFixed(1)} m`)
-    y = line(doc, y, 'Fittings / radiators / boiler', `${r.fittings} / ${r.radiators} / ${r.boilerKw} kW`)
-    y = heading(doc, y + 2, 'Electrics')
-    y = line(doc, y, 'Sockets / lights / CU ways', `${r.sockets} / ${r.lights} / ${r.cuWays}`)
-    y = line(doc, y, '2.5 / 1.5 / 6 mm²', `${r.cable25M.toFixed(0)} / ${r.cable15M.toFixed(0)} / ${r.cable6M.toFixed(0)} m`)
-    y = line(doc, y, 'Installed range', `${formatGBP(r.installedLowGbp)} – ${formatGBP(r.installedHighGbp)}`)
-    return y
-  }, r.notes)
+  pack(job, g, 'Plumbing & electrics (guide)', 'mep', (doc, y) => drawMepTakeoff(doc, y, r), r.notes)
+}
+
+export function drawPaintingTakeoff(doc: jsPDF, y: number, job: JobState, r: PaintingResult): number {
+  y = heading(doc, y, job.painting.substrate)
+  y = line(doc, y, 'Coats', `mist ${r.coats.mist} + top ${r.coats.top}`)
+  y = line(doc, y, 'Walls+ceilings / woodwork / external', `${formatM2(r.wallCeilingM2)} / ${formatM2(r.woodworkM2)} / ${formatM2(r.externalM2)}`)
+  y = line(doc, y, 'Paint', `${r.litres.toFixed(1)} L  ·  ${r.tins} tins`)
+  return y
 }
 
 export function exportPaintingPdf(job: JobState, g: DerivedGeometry, r: PaintingResult) {
-  pack(job, g, 'Painting & decorating', 'painting', (doc, y) => {
-    y = heading(doc, y, job.painting.substrate)
-    y = line(doc, y, 'Coats', `mist ${r.coats.mist} + top ${r.coats.top}`)
-    y = line(doc, y, 'Walls+ceilings / woodwork / external', `${formatM2(r.wallCeilingM2)} / ${formatM2(r.woodworkM2)} / ${formatM2(r.externalM2)}`)
-    y = line(doc, y, 'Paint', `${r.litres.toFixed(1)} L  ·  ${r.tins} tins`)
-    return y
-  }, r.notes)
+  pack(job, g, 'Painting & decorating', 'painting', (doc, y) => drawPaintingTakeoff(doc, y, job, r), r.notes)
+}
+
+export function drawExternalsTakeoff(doc: jsPDF, y: number, r: ExternalsResult): number {
+  y = heading(doc, y, 'Hard landscape')
+  y = line(doc, y, 'Drive / path', `${formatM2(r.driveM2)} / ${formatM2(r.pathM2)}`)
+  y = line(doc, y, 'Hardcore', `${r.hardcoreT.toFixed(1)} t  ·  ${r.hardcoreBags} bags`)
+  y = heading(doc, y + 2, 'Fence / drainage')
+  y = line(doc, y, 'Bays / posts / panels', `${r.fenceBays} / ${r.posts} / ${r.panels}`)
+  y = line(doc, y, 'Soakaway / 110 mm pipe', `${formatM3(r.soakawayM3)} / ${r.pipeM.toFixed(1)} m + ${r.pipeFittings} fittings`)
+  return y
 }
 
 export function exportExternalsPdf(job: JobState, g: DerivedGeometry, r: ExternalsResult) {
-  pack(job, g, 'Externals', 'externals', (doc, y) => {
-    y = heading(doc, y, 'Hard landscape')
-    y = line(doc, y, 'Drive / path', `${formatM2(r.driveM2)} / ${formatM2(r.pathM2)}`)
-    y = line(doc, y, 'Hardcore', `${r.hardcoreT.toFixed(1)} t  ·  ${r.hardcoreBags} bags`)
-    y = heading(doc, y + 2, 'Fence / drainage')
-    y = line(doc, y, 'Bays / posts / panels', `${r.fenceBays} / ${r.posts} / ${r.panels}`)
-    y = line(doc, y, 'Soakaway / 110 mm pipe', `${formatM3(r.soakawayM3)} / ${r.pipeM.toFixed(1)} m + ${r.pipeFittings} fittings`)
-    return y
-  }, r.notes)
+  pack(job, g, 'Externals', 'externals', (doc, y) => drawExternalsTakeoff(doc, y, r), r.notes)
+}
+
+export function drawScaffoldTakeoff(doc: jsPDF, y: number, r: ScaffoldResult): number {
+  y = heading(doc, y, 'Schedule')
+  y = line(doc, y, 'Height / perimeter / lifts / bays', `${r.heightM.toFixed(2)} m / ${r.perimeterM.toFixed(2)} m / ${r.lifts} / ${r.bays}`)
+  y = line(doc, y, 'Standards / ledgers / transoms', `${r.standards} / ${r.ledgers} / ${r.transoms}`)
+  y = line(doc, y, 'Boards / toe boards', `${r.boards} / ${r.toeBoards}`)
+  y = line(doc, y, `Hire (${r.hireWeeks} weeks)`, formatGBP(r.hireGbp))
+  return y
 }
 
 export function exportScaffoldPdf(job: JobState, g: DerivedGeometry, r: ScaffoldResult) {
-  pack(job, g, 'Scaffolding', 'scaffold', (doc, y) => {
-    y = heading(doc, y, 'Schedule')
-    y = line(doc, y, 'Height / perimeter / lifts / bays', `${r.heightM.toFixed(2)} m / ${r.perimeterM.toFixed(2)} m / ${r.lifts} / ${r.bays}`)
-    y = line(doc, y, 'Standards / ledgers / transoms', `${r.standards} / ${r.ledgers} / ${r.transoms}`)
-    y = line(doc, y, 'Boards / toe boards', `${r.boards} / ${r.toeBoards}`)
-    y = line(doc, y, `Hire (${r.hireWeeks} weeks)`, formatGBP(r.hireGbp))
-    return y
-  }, r.notes)
+  pack(job, g, 'Scaffolding', 'scaffold', (doc, y) => drawScaffoldTakeoff(doc, y, r), r.notes)
 }
