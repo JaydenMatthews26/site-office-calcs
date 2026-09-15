@@ -53,7 +53,7 @@ import {
  * One PDF for the job: plan/measurements snapshot, then each enabled calculator
  * in registry order. Reuses section calc + PDF drawers — no second set of formulas.
  */
-export function exportWholeJobPdf(job: JobState, geometry: DerivedGeometry): void {
+export function buildWholeJobPdf(job: JobState, geometry: DerivedGeometry): jsPDF {
   const included = enabledCalculatorSections(job.sectionEnabled)
   const { doc, y: y0 } = startSectionPdf(job, 'Whole job take-off')
   let y = drawJobSnapshot(doc, y0, job, geometry)
@@ -72,7 +72,11 @@ export function exportWholeJobPdf(job: JobState, geometry: DerivedGeometry): voi
     y = appendCalculator(doc, y, section.id, job, geometry)
   }
 
-  finishPdf(doc, job, 'whole-job')
+  return doc
+}
+
+export function exportWholeJobPdf(job: JobState, geometry: DerivedGeometry): void {
+  finishPdf(buildWholeJobPdf(job, geometry), job, 'whole-job')
 }
 
 function appendCalculator(
