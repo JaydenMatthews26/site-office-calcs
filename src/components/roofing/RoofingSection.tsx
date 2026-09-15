@@ -6,7 +6,7 @@ import { useGeometry } from '../../hooks/useGeometry'
 import { exportRoofingPdf } from '../../pdf/exportRoofing'
 import { useJobStore } from '../../store/useJobStore'
 import { jobState } from '../takeoff/geom'
-import { NumberField, Panel, SelectField, Stat } from '../ui/Fields'
+import { IncludeToggle, NumberField, Panel, SelectField, Stat } from '../ui/Fields'
 import { CarpentryPanel } from './CarpentryPanel'
 import { CoveringsPanel } from './CoveringsPanel'
 import { CutListPreview } from './CutListPreview'
@@ -38,15 +38,11 @@ export function RoofingSection() {
               editable if the structural span differs from the drawn box.
             </p>
           </div>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-accent"
-              checked={included}
-              onChange={(e) => useJobStore.getState().toggleSection('roofing', e.target.checked)}
-            />
-            Include roofing in job / PDF
-          </label>
+          <IncludeToggle
+            label="Include roofing in job / PDF"
+            checked={included}
+            onChange={(v) => useJobStore.getState().toggleSection('roofing', v)}
+          />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -145,28 +141,28 @@ export function RoofingSection() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <label className="flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2 text-sm">
+          <label className="flex min-h-11 items-center gap-3 rounded-lg border border-line bg-card px-3 py-2 text-sm">
             <input
               type="checkbox"
-              className="h-4 w-4 accent-accent"
+              className="check-lg accent-accent"
               checked={roofing.coveringsEnabled}
               onChange={(e) => patchRoofing({ coveringsEnabled: e.target.checked })}
             />
             Roof coverings
           </label>
-          <label className="flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2 text-sm">
+          <label className="flex min-h-11 items-center gap-3 rounded-lg border border-line bg-card px-3 py-2 text-sm">
             <input
               type="checkbox"
-              className="h-4 w-4 accent-accent"
+              className="check-lg accent-accent"
               checked={roofing.carpentryEnabled}
               onChange={(e) => patchRoofing({ carpentryEnabled: e.target.checked })}
             />
             Roofing carpentry
           </label>
-          <label className="flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2 text-sm">
+          <label className="flex min-h-11 items-center gap-3 rounded-lg border border-line bg-card px-3 py-2 text-sm">
             <input
               type="checkbox"
-              className="h-4 w-4 accent-accent"
+              className="check-lg accent-accent"
               checked={roofing.cutListOptIn}
               onChange={(e) => patchRoofing({ cutListOptIn: e.target.checked })}
             />

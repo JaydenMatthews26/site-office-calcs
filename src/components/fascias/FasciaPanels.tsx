@@ -84,10 +84,10 @@ export function FasciaSoffitPanel({ result }: { result: FasciasResult }) {
           value={fascias.wastePct}
           onChange={(e) => patchFascias({ wastePct: Number(e.target.value) })}
         />
-        <label className="flex items-end gap-2 pb-2 text-sm">
+        <label className="flex min-h-11 items-center gap-3 pb-2 text-sm">
           <input
             type="checkbox"
-            className="h-4 w-4 accent-accent"
+            className="check-lg accent-accent"
             checked={fascias.includeBargeboards}
             onChange={(e) => patchFascias({ includeBargeboards: e.target.checked })}
           />

@@ -24,20 +24,17 @@ export function JobInputModeToggle({
     variant === 'sidebar'
       ? 'mt-3 flex rounded-lg bg-white/10 p-1 text-xs font-medium'
       : 'flex rounded-lg border border-line bg-paper p-1 text-sm font-medium'
-  const on =
-    variant === 'sidebar' ? 'bg-accent text-white' : 'bg-ink text-paper'
+  const on = variant === 'sidebar' ? 'bg-accent text-white' : 'bg-ink text-paper'
   const off = variant === 'sidebar' ? 'text-white/70' : 'text-ink-soft hover:text-ink'
 
   return (
     <div
       role="radiogroup"
       aria-label="Job input mode"
-      className={variant === 'header' ? 'flex min-w-[240px] flex-col gap-1' : undefined}
+      className={variant === 'header' ? 'flex min-w-0 flex-col gap-1 md:min-w-[240px]' : undefined}
     >
       {variant === 'header' ? (
-        <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
-          Job input
-        </span>
+        <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Job input</span>
       ) : null}
       <div className={track}>
         {OPTIONS.map((opt) => (
@@ -47,7 +44,7 @@ export function JobInputModeToggle({
             role="radio"
             aria-checked={mode === opt.id}
             title={opt.hint}
-            className={`flex-1 rounded-md px-3 py-1.5 ${mode === opt.id ? on : off}`}
+            className={`touch-target flex-1 rounded-md px-3 ${mode === opt.id ? on : off}`}
             onClick={() => pick(opt.id)}
           >
             {opt.label}

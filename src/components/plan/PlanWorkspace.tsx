@@ -9,6 +9,7 @@ import { PlanToolbar } from './PlanToolbar'
 
 export function PlanWorkspace() {
   const inputMode = useJobStore((s) => s.inputMode)
+  const setInputMode = useJobStore((s) => s.setInputMode)
   const geometry = useGeometry()
   const [tool, setTool] = useState<DrawTool>('rect')
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null)
@@ -25,6 +26,18 @@ export function PlanWorkspace() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <p className="no-print border-b border-line bg-paper px-3 py-2 text-xs leading-relaxed text-ink-soft md:hidden">
+        Drag with one finger to draw a rectangle or wall. Pinch to zoom, or use +/−. Pan moves the
+        sheet.{' '}
+        <button
+          type="button"
+          className="font-semibold text-accent underline"
+          onClick={() => setInputMode('manual')}
+        >
+          Manual mode
+        </button>{' '}
+        types sizes if drawing is fiddly.
+      </p>
       <PlanToolbar
         tool={tool}
         onTool={setTool}
@@ -36,7 +49,7 @@ export function PlanWorkspace() {
         }}
       />
       <PlanMetrics geometry={geometry} />
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <PlanEditor
           tool={tool}
           selectedWallId={selectedWallId}

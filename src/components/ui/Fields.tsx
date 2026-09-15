@@ -14,7 +14,7 @@ export function TextField({
       <input
         type="text"
         {...props}
-        className="touch-target w-full rounded-md border border-line bg-paper px-3 text-sm outline-none focus:border-accent"
+        className="touch-target w-full rounded-md border border-line bg-paper px-3 text-base outline-none focus:border-accent"
       />
       {hint ? <span className="text-[11px] text-ink-soft">{hint}</span> : null}
     </label>
@@ -38,7 +38,7 @@ export function NumberField({
         <input
           type="number"
           {...props}
-          className="touch-target w-full rounded-md border border-line bg-paper px-3 text-sm outline-none focus:border-accent"
+          className="touch-target w-full rounded-md border border-line bg-paper px-3 text-base outline-none focus:border-accent"
         />
         {unit ? <span className="min-w-10 shrink-0 text-xs text-ink-soft">{unit}</span> : null}
       </span>
@@ -60,7 +60,7 @@ export function SelectField({
       <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">{label}</span>
       <select
         {...props}
-        className="touch-target w-full rounded-md border border-line bg-paper px-3 text-sm outline-none focus:border-accent"
+        className="touch-target w-full rounded-md border border-line bg-paper px-3 text-base outline-none focus:border-accent"
       >
         {children}
       </select>
@@ -107,7 +107,7 @@ export function ColorField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           spellCheck={false}
-          className="touch-target w-full rounded-md border border-line bg-paper px-3 font-mono text-sm outline-none focus:border-accent"
+          className="touch-target w-full rounded-md border border-line bg-paper px-3 font-mono text-base outline-none focus:border-accent"
         />
       </span>
       {hint ? <span className="text-[11px] text-ink-soft">{hint}</span> : null}
@@ -125,10 +125,47 @@ export function CheckField({
   onChange: (v: boolean) => void
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <IncludeToggle label={label} checked={checked} onChange={onChange} />
+  )
+}
+
+export function IncludeToggle({
+  label,
+  checked,
+  onChange,
+  compact = false,
+  tone = 'light',
+}: {
+  label: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  compact?: boolean
+  tone?: 'light' | 'dark'
+}) {
+  if (compact) {
+    return (
+      <label
+        className={`mr-1 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center ${
+          tone === 'dark' ? 'text-paper' : 'text-ink'
+        }`}
+        title={label}
+      >
+        <span className="sr-only">{label}</span>
+        <input
+          type="checkbox"
+          className="check-lg accent-accent"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+      </label>
+    )
+  }
+
+  return (
+    <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium">
       <input
         type="checkbox"
-        className="h-4 w-4 accent-accent"
+        className="check-lg shrink-0 accent-accent"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />

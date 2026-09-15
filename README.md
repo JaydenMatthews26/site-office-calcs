@@ -28,7 +28,9 @@ Then open the URL Vite prints (usually `http://localhost:5173`).
 | `npm run build` | Production build |
 | `npm run preview` | Preview the production build |
 
-**Requirements:** Node 20+. Modern browser (canvas). iPad-sized viewports are first-class: 44 px tools, pinch/zoom buttons, local save.
+**Requirements:** Node 20+. Modern browser (canvas). Phone and iPad are first-class: off-canvas section menu on narrow screens, persistent sidebar from tablet width up, 44 px tools, finger-draw + pinch-zoom (or +/−) on the plan, 16 px inputs, local save.
+
+On a phone, open **Menu** for calculators (drawer overlay). The plan canvas is full-width so you can draw with a finger; **Manual** types sizes if you would rather skip the canvas.
 
 ## Job input mode
 
