@@ -1,3 +1,54 @@
+import {
+  DEFAULT_EXTERNAL_WALLS,
+  DEFAULT_EXTERNALS,
+  DEFAULT_FINISHES,
+  DEFAULT_FIRST_FLOOR,
+  DEFAULT_FLOOR_COVER,
+  DEFAULT_FOUNDATIONS,
+  DEFAULT_GROUND_FLOOR,
+  DEFAULT_JOINERY,
+  DEFAULT_MEP,
+  DEFAULT_PAINTING,
+  DEFAULT_PARTITIONS,
+  DEFAULT_SCAFFOLD,
+  DEFAULT_SKIRTING,
+  DEFAULT_STAIRS,
+  DEFAULT_STRUCTURE,
+  type ExternalWallInputs,
+  type ExternalsInputs,
+  type FinishesInputs,
+  type FirstFloorInputs,
+  type FloorCoverInputs,
+  type FoundationsInputs,
+  type GroundFloorInputs,
+  type JoineryInputs,
+  type MepInputs,
+  type PaintingInputs,
+  type PartitionInputs,
+  type ScaffoldInputs,
+  type SkirtingInputs,
+  type StairsInputs,
+  type StructureInputs,
+} from './modules'
+
+export type {
+  ExternalWallInputs,
+  ExternalsInputs,
+  FinishesInputs,
+  FirstFloorInputs,
+  FloorCoverInputs,
+  FoundationsInputs,
+  GroundFloorInputs,
+  JoineryInputs,
+  MepInputs,
+  PaintingInputs,
+  PartitionInputs,
+  ScaffoldInputs,
+  SkirtingInputs,
+  StairsInputs,
+  StructureInputs,
+} from './modules'
+
 export type WallKind = 'external' | 'partition'
 export type OpeningKind = 'door' | 'opening'
 export type DrawTool =
@@ -16,6 +67,23 @@ export type CarpentryMode = 'cut' | 'truss'
 export type TrussType = 'fink' | 'attic' | 'mono-pitch' | 'scissor' | 'raised-tie'
 export type FasciaMaterial = 'pvcu' | 'timber'
 export type GutterMaterial = 'plastic' | 'metal' | 'aluminium' | 'copper'
+export type InputMode = 'draw' | 'manual'
+
+export interface ManualTakeoff {
+  spanMm: number
+  lengthMm: number
+  footprintM2: number
+  externalLengthMm: number
+  partitionLengthMm: number
+  storeyHeightMm: number
+  storeys: number
+  doorCount: number
+  openingCount: number
+  doorWidthMm: number
+  doorHeightMm: number
+  windowWidthMm: number
+  windowHeightMm: number
+}
 
 export interface PointMm {
   x: number
@@ -48,6 +116,8 @@ export interface Plan {
   openings: Opening[]
   /** Floor-to-ceiling, used for later ceiling take-offs. Default 2400 mm. */
   storeyHeightMm: number
+  /** Number of occupied storeys (elevations and first-floor take-off). */
+  storeys: number
 }
 
 export interface CoveringInputs {
@@ -133,9 +203,26 @@ export interface FasciasInputs {
 
 export interface JobState {
   jobName: string
+  inputMode: InputMode
+  manual: ManualTakeoff
   plan: Plan
   roofing: RoofingInputs
   fascias: FasciasInputs
+  structure: StructureInputs
+  joinery: JoineryInputs
+  foundations: FoundationsInputs
+  groundFloor: GroundFloorInputs
+  partitions: PartitionInputs
+  firstFloor: FirstFloorInputs
+  stairs: StairsInputs
+  externalWalls: ExternalWallInputs
+  finishes: FinishesInputs
+  skirting: SkirtingInputs
+  floorCover: FloorCoverInputs
+  mep: MepInputs
+  painting: PaintingInputs
+  externals: ExternalsInputs
+  scaffold: ScaffoldInputs
   activeSectionId: string
   /**
    * Per-section include flags for PDF / later whole-job print.
@@ -208,13 +295,47 @@ export const DEFAULT_PLAN: Plan = {
   walls: [],
   openings: [],
   storeyHeightMm: 2400,
+  storeys: 1,
+}
+
+export const DEFAULT_MANUAL: ManualTakeoff = {
+  spanMm: 0,
+  lengthMm: 0,
+  footprintM2: 0,
+  externalLengthMm: 0,
+  partitionLengthMm: 0,
+  storeyHeightMm: 2400,
+  storeys: 1,
+  doorCount: 0,
+  openingCount: 0,
+  doorWidthMm: 826,
+  doorHeightMm: 2040,
+  windowWidthMm: 1200,
+  windowHeightMm: 1200,
 }
 
 export const DEFAULT_JOB: JobState = {
   jobName: 'Untitled job',
+  inputMode: 'draw',
+  manual: DEFAULT_MANUAL,
   plan: DEFAULT_PLAN,
   roofing: DEFAULT_ROOFING,
   fascias: DEFAULT_FASCIAS,
+  structure: DEFAULT_STRUCTURE,
+  joinery: DEFAULT_JOINERY,
+  foundations: DEFAULT_FOUNDATIONS,
+  groundFloor: DEFAULT_GROUND_FLOOR,
+  partitions: DEFAULT_PARTITIONS,
+  firstFloor: DEFAULT_FIRST_FLOOR,
+  stairs: DEFAULT_STAIRS,
+  externalWalls: DEFAULT_EXTERNAL_WALLS,
+  finishes: DEFAULT_FINISHES,
+  skirting: DEFAULT_SKIRTING,
+  floorCover: DEFAULT_FLOOR_COVER,
+  mep: DEFAULT_MEP,
+  painting: DEFAULT_PAINTING,
+  externals: DEFAULT_EXTERNALS,
+  scaffold: DEFAULT_SCAFFOLD,
   activeSectionId: 'plan',
   sectionEnabled: {
     roofing: true,

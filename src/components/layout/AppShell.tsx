@@ -2,6 +2,36 @@ import type { ReactNode } from 'react'
 import { SECTIONS } from '../../sections/registry'
 import { useJobStore } from '../../store/useJobStore'
 
+function ModeToggle() {
+  const mode = useJobStore((s) => s.inputMode)
+  const setInputMode = useJobStore((s) => s.setInputMode)
+  const setActive = useJobStore((s) => s.setActiveSection)
+  return (
+    <div className="mt-3 flex rounded-lg bg-white/10 p-1 text-xs font-medium">
+      <button
+        type="button"
+        className={`flex-1 rounded-md px-2 py-1.5 ${mode === 'draw' ? 'bg-accent text-white' : 'text-white/70'}`}
+        onClick={() => {
+          setInputMode('draw')
+          setActive('plan')
+        }}
+      >
+        Draw plan
+      </button>
+      <button
+        type="button"
+        className={`flex-1 rounded-md px-2 py-1.5 ${mode === 'manual' ? 'bg-accent text-white' : 'text-white/70'}`}
+        onClick={() => {
+          setInputMode('manual')
+          setActive('plan')
+        }}
+      >
+        Manual
+      </button>
+    </div>
+  )
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const jobName = useJobStore((s) => s.jobName)
   const setJobName = useJobStore((s) => s.setJobName)
@@ -22,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="mt-2 text-xs leading-relaxed text-white/65">
             Independent of My Site Office. Plans and figures stay on this device.
           </p>
+          <ModeToggle />
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="Calculator sections">
           {SECTIONS.map((section) => {
@@ -79,8 +110,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
           </label>
           <p className="max-w-md text-xs leading-relaxed text-ink-soft">
-            Draw once on the plan. Roofing, fascias and every later section read wall lengths, areas
-            and openings from that geometry.
+            One take-off model: draw the plan or type sizes. Every calculator reads that geometry.
           </p>
           <button
             type="button"

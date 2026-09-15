@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { calcCoverings } from '../../calc/roofCoverings'
 import { calcCarpentry } from '../../calc/roofCarpentry'
 import { formatM, formatM2, mmToM } from '../../calc/units'
-import { deriveGeometry } from '../../geometry/derive'
+import { useGeometry } from '../../hooks/useGeometry'
 import { exportRoofingPdf } from '../../pdf/exportRoofing'
 import { useJobStore } from '../../store/useJobStore'
+import { jobState } from '../takeoff/geom'
 import { NumberField, Panel, SelectField, Stat } from '../ui/Fields'
 import { CarpentryPanel } from './CarpentryPanel'
 import { CoveringsPanel } from './CoveringsPanel'
@@ -12,13 +13,11 @@ import { CutListPreview } from './CutListPreview'
 
 export function RoofingSection() {
   const jobName = useJobStore((s) => s.jobName)
-  const plan = useJobStore((s) => s.plan)
   const roofing = useJobStore((s) => s.roofing)
-  const fascias = useJobStore((s) => s.fascias)
   const sectionEnabled = useJobStore((s) => s.sectionEnabled)
   const patchRoofing = useJobStore((s) => s.patchRoofing)
 
-  const geometry = useMemo(() => deriveGeometry(plan), [plan])
+  const geometry = useGeometry()
   const coverings = useMemo(() => calcCoverings(geometry, roofing), [geometry, roofing])
   const carpentry = useMemo(() => calcCarpentry(geometry, roofing), [geometry, roofing])
   const included = sectionEnabled.roofing !== false
@@ -178,14 +177,7 @@ export function RoofingSection() {
             disabled={!included}
             onClick={() =>
               exportRoofingPdf({
-                job: {
-                  jobName,
-                  plan,
-                  roofing,
-                  fascias,
-                  activeSectionId: 'roofing',
-                  sectionEnabled,
-                },
+                job: jobState(),
                 geometry,
                 coverings,
                 carpentry,

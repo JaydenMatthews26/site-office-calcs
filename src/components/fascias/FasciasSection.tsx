@@ -1,22 +1,21 @@
 import { useMemo } from 'react'
 import { calcFascias } from '../../calc/fascias'
 import { formatGBP, formatM, formatM2, mmToM } from '../../calc/units'
-import { deriveGeometry } from '../../geometry/derive'
+import { useGeometry } from '../../hooks/useGeometry'
 import { exportFasciasPdf } from '../../pdf/exportFascias'
 import { useJobStore } from '../../store/useJobStore'
+import { jobState } from '../takeoff/geom'
 import { NumberField, Stat } from '../ui/Fields'
 import { FasciaSoffitPanel, GutteringPanel } from './FasciaPanels'
 
 export function FasciasSection() {
-  const jobName = useJobStore((s) => s.jobName)
-  const plan = useJobStore((s) => s.plan)
   const roofing = useJobStore((s) => s.roofing)
   const fascias = useJobStore((s) => s.fascias)
   const sectionEnabled = useJobStore((s) => s.sectionEnabled)
   const patchFascias = useJobStore((s) => s.patchFascias)
   const setActive = useJobStore((s) => s.setActiveSection)
 
-  const geometry = useMemo(() => deriveGeometry(plan), [plan])
+  const geometry = useGeometry()
   const result = useMemo(
     () => calcFascias(geometry, roofing, fascias),
     [geometry, roofing, fascias],
@@ -94,14 +93,7 @@ export function FasciasSection() {
             disabled={!included}
             onClick={() =>
               exportFasciasPdf({
-                job: {
-                  jobName,
-                  plan,
-                  roofing,
-                  fascias,
-                  activeSectionId: 'fascias',
-                  sectionEnabled,
-                },
+                job: jobState(),
                 geometry,
                 fascias: result,
               })

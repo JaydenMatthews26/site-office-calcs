@@ -23,10 +23,12 @@ export function PlanMetrics({ geometry }: { geometry: DerivedGeometry }) {
       ))}
       <div className="col-span-2 bg-card px-3 py-2 sm:col-span-4 lg:col-span-8">
         <p className="text-[11px] text-ink-soft">
-          {geometry.wallCount === 0
-            ? 'Empty sheet — drag a rectangle or insert the 8 × 6 m sample. Scale: 40 px = 1 m, snap 100 mm.'
+            {geometry.wallCount === 0
+            ? geometry.source === 'manual'
+              ? 'Typed measurements drive every calculator. Switch to Draw plan for the canvas.'
+              : 'Empty sheet — drag a rectangle or insert the 8 × 6 m sample. Scale: 40 px = 1 m, snap 100 mm.'
             : geometry.closedOutline
-              ? 'Closed external outline. Roofing and fascias read these figures automatically.'
+              ? `Closed external outline. Calculators read these figures (${geometry.source === 'manual' ? 'typed' : 'drawn'}).`
               : 'Outline is not closed — footprint uses the bounding box until walls join.'}
         </p>
       </div>

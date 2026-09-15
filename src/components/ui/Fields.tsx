@@ -94,6 +94,39 @@ export function ColorField({
   )
 }
 
+export function CheckField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        className="h-4 w-4 accent-accent"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      {label}
+    </label>
+  )
+}
+
+export function Notes({ notes }: { notes: string[] }) {
+  if (notes.length === 0) return null
+  return (
+    <ul className="list-disc space-y-1 pl-4 text-xs text-ink-soft">
+      {notes.map((n) => (
+        <li key={n}>{n}</li>
+      ))}
+    </ul>
+  )
+}
+
 export function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="rounded-xl border border-line bg-card p-4 shadow-sm">
