@@ -74,14 +74,49 @@ export function drawPlanBlock(doc: jsPDF, y: number, geometry: DerivedGeometry, 
   return y
 }
 
-export function finishPdf(doc: jsPDF, job: JobState, slug: string): void {
-  doc.setFontSize(8)
-  doc.setTextColor(100)
-  doc.text(
-    'Site Office Calcs is independent of My Site Office. Figures are take-off aids, not Building Regulations calculations.',
-    18,
-    287,
+/** Shared take-off snapshot for the whole-job PDF (drawn plan or typed measurements). */
+export function drawJobSnapshot(doc: jsPDF, y: number, job: JobState, geometry: DerivedGeometry): number {
+  y = drawPlanBlock(doc, y, geometry)
+  y = line(doc, y, 'Eaves / perimeter', formatM(mmToM(geometry.eavesPerimeterMm)))
+  y = line(
+    doc,
+    y,
+    'Roof pitch / eaves overhang',
+    `${job.roofing.pitchDeg}°  ·  ${job.roofing.eavesOverhangMm} mm  ·  ${job.roofing.roofShape}`,
   )
+  y = line(
+    doc,
+    y,
+    'Outline',
+    geometry.source === 'manual'
+      ? 'Typed measurements — no canvas'
+      : geometry.closedOutline
+        ? 'Closed polygon'
+        : 'Open — bounding box used',
+  )
+  return y
+}
+
+/** Start a calculator chapter on a new page (whole-job PDF). */
+export function startCalculatorPage(doc: jsPDF, title: string): number {
+  doc.addPage()
+  return heading(doc, 22, title)
+}
+
+export function finishPdf(doc: jsPDF, job: JobState, slug: string): void {
+  const pageCount = doc.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(100)
+    doc.text(
+      'Site Office Calcs is independent of My Site Office. Figures are take-off aids, not Building Regulations calculations.',
+      18,
+      287,
+    )
+    doc.text(`${i} / ${pageCount}`, 192, 287, { align: 'right' })
+  }
   const safe = (job.jobName || 'job').replace(/[^\w\-]+/g, '-').slice(0, 40)
   doc.save(`site-office-calcs-${slug}-${safe}.pdf`)
 }

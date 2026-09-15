@@ -54,6 +54,12 @@ Both modes write the same take-off model. Calculators never care which mode prod
 
 UK units: **mm / m / £**. Figures are **take-off aids**, not structural design.
 
+## Whole-job PDF
+
+**Export whole job PDF** in the app header (next to Reset job) downloads one A4 file for the current job. It always starts with the shared take-off snapshot (drawn plan or typed measurements: span, length, footprint, eaves, openings, heights). It then appends each calculator that is **toggled on** in the sidebar, in registry order (roofing → fascias → … → scaffolding). Unticked sections are omitted. Each section still has its own PDF button for a single-trade printout.
+
+The file is generated in the browser with jsPDF (`site-office-calcs-whole-job-…pdf`) and is not uploaded anywhere.
+
 ## Independence from My Site Office
 
 - This repository is standalone.
@@ -72,5 +78,5 @@ src/
   components/roofing
   components/fascias
   components/takeoff     # Remaining calculators
-  pdf/               # jsPDF section exports
+  pdf/               # jsPDF section exports + whole-job PDF
 ```
