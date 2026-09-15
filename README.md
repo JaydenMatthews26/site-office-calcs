@@ -4,6 +4,14 @@ UK construction calculator suite. **Sister product to My Site Office** (quoting 
 
 A 2D floor plan **or typed measurements** is the single take-off model. Every calculator reads span, length, footprint, eaves/perimeter, storey height, storeys and openings from that model. Edits ripple through immediately. Everything is stored **on this device** (`localStorage`). There is no backend.
 
+## Live site (iPad / any browser)
+
+**https://jaydenmatthews26.github.io/site-office-calcs/**
+
+Pushes to `main` (and manual **Actions → Deploy GitHub Pages → Run workflow**) build with Node 20 (`npm ci`, `npm run build`) and publish `dist/` via the official Pages actions (`actions/upload-pages-artifact` + `actions/deploy-pages`). Vite `base` is `/site-office-calcs/` for that production build only; `npm run dev` still serves `/` at `http://localhost:5173`. The production build copies `index.html` to `404.html` so GitHub Pages can still load the app if a path is missing (this app has no URL routes — sections live in the page).
+
+First-time setup (once per repo): **Settings → Pages → Source: GitHub Actions**. Until that is set, the workflow cannot finish deploying.
+
 ## How to run
 
 ```bash
