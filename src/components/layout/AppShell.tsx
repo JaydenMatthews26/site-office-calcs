@@ -88,17 +88,31 @@ export function AppShell({ children }: { children: ReactNode }) {
               <JobInputModeToggle variant="sidebar" />
             </div>
             <SectionNav onNavigate={() => setNavOpen(false)} />
-            <LocalNote />
+            <div className="border-t border-white/10 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Reset this job? Local data for Site Office Calcs will be cleared.')) {
+                    resetJob()
+                    setNavOpen(false)
+                  }
+                }}
+                className="touch-target w-full rounded-md border border-white/20 px-3 text-sm text-paper"
+              >
+                Reset job
+              </button>
+              <p className="mt-2 text-[11px] text-white/45">Saved in this browser only. No cloud, no account.</p>
+            </div>
           </aside>
         </div>
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header
-          className="no-print flex flex-col gap-2 border-b border-line bg-card px-3 py-2 md:flex-row md:flex-wrap md:items-end md:gap-3 md:px-5 md:py-3"
+          className="no-print border-b border-line bg-card px-3 py-2 md:px-5 md:py-3"
           style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
         >
-          <div className="flex min-w-0 items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2 md:hidden">
             <button
               type="button"
               className="touch-target inline-flex shrink-0 items-center gap-2 rounded-md border border-line bg-paper px-3 text-sm font-medium"
@@ -112,30 +126,39 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="block h-0.5 w-full bg-ink" />
               </span>
               Menu
+              <span className="text-ink-soft">· {activeSection?.shortTitle ?? 'Plan'}</span>
             </button>
-            <button
-              type="button"
-              className="min-w-0 flex-1 truncate text-left text-base font-semibold"
-              onClick={() => setNavOpen(true)}
-            >
-              {activeSection?.title ?? 'Site Office Calcs'}
-            </button>
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">Job name</span>
+              <input
+                value={jobName}
+                onChange={(e) => setJobName(e.target.value)}
+                placeholder="Job name"
+                className="touch-target w-full rounded-md border border-line bg-paper px-3 text-base font-medium outline-none focus:border-accent"
+              />
+            </label>
+          </div>
+          <div className="mt-2 flex items-stretch gap-2 md:hidden">
+            <div className="min-w-0 flex-1">
+              <JobInputModeToggle variant="header" />
+            </div>
+            <WholeJobExportButton className="shrink-0" />
           </div>
 
-          <label className="flex min-w-0 flex-1 flex-col gap-1 md:min-w-[200px]">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Job name</span>
-            <input
-              value={jobName}
-              onChange={(e) => setJobName(e.target.value)}
-              className="touch-target rounded-md border border-line bg-paper px-3 text-base font-medium outline-none focus:border-accent"
-            />
-          </label>
-          <JobInputModeToggle variant="header" />
-          <p className="hidden max-w-sm pb-1 text-xs leading-relaxed text-ink-soft lg:block">
-            One take-off model. Every calculator reads span, length, footprint, eaves and openings from it.
-          </p>
-          <div className="flex w-full gap-2 md:w-auto md:contents">
-            <WholeJobExportButton className="min-w-0 flex-1 md:flex-none" />
+          <div className="hidden md:flex md:flex-wrap md:items-end md:gap-3">
+            <label className="flex min-w-[200px] flex-1 flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Job name</span>
+              <input
+                value={jobName}
+                onChange={(e) => setJobName(e.target.value)}
+                className="touch-target rounded-md border border-line bg-paper px-3 text-base font-medium outline-none focus:border-accent"
+              />
+            </label>
+            <JobInputModeToggle variant="header" />
+            <p className="hidden max-w-sm pb-1 text-xs leading-relaxed text-ink-soft lg:block">
+              One take-off model. Every calculator reads span, length, footprint, eaves and openings from it.
+            </p>
+            <WholeJobExportButton />
             <button
               type="button"
               onClick={() => {
@@ -143,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   resetJob()
                 }
               }}
-              className="touch-target shrink-0 rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft hover:border-accent hover:text-accent"
+              className="touch-target rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft hover:border-accent hover:text-accent"
             >
               Reset job
             </button>

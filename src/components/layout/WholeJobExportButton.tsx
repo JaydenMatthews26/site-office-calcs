@@ -13,9 +13,10 @@ export function WholeJobExportButton({ className = '' }: { className?: string })
       type="button"
       onClick={() => exportWholeJobPdf(useJobStore.getState(), geometry)}
       title={`Downloads one PDF: plan / measurements, then ${count} enabled calculator${count === 1 ? '' : 's'} (sidebar toggles). Stays on this device.`}
-      className={`touch-target rounded-md bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-dark ${className}`}
+      className={`touch-target rounded-md bg-accent px-3 text-sm font-semibold text-white hover:bg-accent-dark md:px-4 ${className}`}
     >
-      Export whole job PDF
+      <span className="md:hidden">Export PDF</span>
+      <span className="hidden md:inline">Export whole job PDF</span>
     </button>
   )
 }

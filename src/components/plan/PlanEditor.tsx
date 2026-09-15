@@ -324,7 +324,27 @@ export function PlanEditor({
   const grid = useMemo(() => gridLines(40_000, 30_000, 1000), [])
 
   return (
-    <div ref={containerRef} className="plan-stage relative h-full min-h-0 w-full overflow-hidden bg-[#efe8da]">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="no-print flex items-center justify-between gap-2 border-b border-line bg-card px-2 py-1 md:hidden">
+        <p className="font-mono text-[11px] text-ink-soft">zoom {zoom.toFixed(2)} · pinch or +/−</p>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            className="touch-target rounded-md border border-line bg-paper px-3 text-lg"
+            onClick={() => setZoom((z) => Math.min(3.5, z * 1.15))}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="touch-target rounded-md border border-line bg-paper px-3 text-lg"
+            onClick={() => setZoom((z) => Math.max(0.3, z / 1.15))}
+          >
+            −
+          </button>
+        </div>
+      </div>
+      <div ref={containerRef} className="plan-stage relative min-h-0 flex-1 overflow-hidden bg-[#efe8da]">
       <Stage
         ref={stageRef}
         width={size.w}
@@ -386,15 +406,12 @@ export function PlanEditor({
         </Layer>
       </Stage>
       <div
-        className="no-print pointer-events-none absolute left-3 rounded bg-ink/80 px-2 py-1 font-mono text-[11px] text-paper"
+        className="no-print pointer-events-none absolute left-3 hidden rounded bg-ink/80 px-2 py-1 font-mono text-[11px] text-paper md:block"
         style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         zoom {zoom.toFixed(2)} · 40 px = 1 m · snap 100 mm · pinch to zoom
       </div>
-      <div
-        className="no-print absolute right-3 flex gap-1"
-        style={{ top: '0.75rem' }}
-      >
+      <div className="no-print absolute right-3 top-3 hidden gap-1 md:flex">
         <button
           type="button"
           className="touch-target pointer-events-auto rounded-md border border-line bg-card px-3 text-lg"
@@ -409,6 +426,7 @@ export function PlanEditor({
         >
           −
         </button>
+      </div>
       </div>
     </div>
   )

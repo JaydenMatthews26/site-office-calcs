@@ -34,7 +34,9 @@ export function JobInputModeToggle({
       className={variant === 'header' ? 'flex min-w-0 flex-col gap-1 md:min-w-[240px]' : undefined}
     >
       {variant === 'header' ? (
-        <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Job input</span>
+        <span className="hidden text-[11px] font-medium uppercase tracking-wider text-ink-soft md:block">
+          Job input
+        </span>
       ) : null}
       <div className={track}>
         {OPTIONS.map((opt) => (

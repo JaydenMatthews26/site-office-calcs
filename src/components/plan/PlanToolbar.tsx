@@ -38,7 +38,7 @@ export function PlanToolbar({
   const setStoreyHeight = useJobStore((s) => s.setStoreyHeight)
 
   return (
-    <div className="no-print flex flex-col gap-2 border-b border-line bg-card px-3 py-2 md:px-4 lg:flex-row lg:items-center lg:flex-wrap">
+    <div className="no-print flex flex-col gap-1.5 border-b border-line bg-card px-3 py-1.5 md:px-4 md:py-2 lg:flex-row lg:items-center lg:flex-wrap">
       <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]">
         {TOOLS.map((t) => (
           <button
@@ -58,11 +58,11 @@ export function PlanToolbar({
           </button>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-2 lg:min-w-0 lg:flex-1">
+      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:thin]">
         <button
           type="button"
           onClick={insertSampleBuilding}
-          className="touch-target rounded-md border border-line px-3 text-sm hover:border-accent"
+          className="touch-target shrink-0 rounded-md border border-line px-3 text-sm hover:border-accent"
         >
           Insert 8 × 6 m sample
         </button>
@@ -70,7 +70,7 @@ export function PlanToolbar({
           type="button"
           onClick={undo}
           disabled={past.length === 0}
-          className="touch-target rounded-md border border-line px-3 text-sm disabled:opacity-40"
+          className="touch-target shrink-0 rounded-md border border-line px-3 text-sm disabled:opacity-40"
         >
           Undo
         </button>
@@ -78,7 +78,7 @@ export function PlanToolbar({
           type="button"
           onClick={redo}
           disabled={future.length === 0}
-          className="touch-target rounded-md border border-line px-3 text-sm disabled:opacity-40"
+          className="touch-target shrink-0 rounded-md border border-line px-3 text-sm disabled:opacity-40"
         >
           Redo
         </button>
@@ -89,7 +89,7 @@ export function PlanToolbar({
               deleteWall(selectedWallId)
               onClearSelection()
             }}
-            className="touch-target rounded-md bg-accent px-3 text-sm font-medium text-white"
+            className="touch-target shrink-0 rounded-md bg-accent px-3 text-sm font-medium text-white"
           >
             Delete wall
           </button>
@@ -101,7 +101,7 @@ export function PlanToolbar({
               deleteOpening(selectedOpeningId)
               onClearSelection()
             }}
-            className="touch-target rounded-md bg-accent px-3 text-sm font-medium text-white"
+            className="touch-target shrink-0 rounded-md bg-accent px-3 text-sm font-medium text-white"
           >
             Delete opening
           </button>
@@ -114,11 +114,11 @@ export function PlanToolbar({
               onClearSelection()
             }
           }}
-          className="touch-target rounded-md border border-line px-3 text-sm text-ink-soft md:ml-auto"
+          className="touch-target shrink-0 rounded-md border border-line px-3 text-sm text-ink-soft md:ml-auto"
         >
           Clear plan
         </button>
-        <label className="flex items-center gap-2 text-xs text-ink-soft">
+        <label className="flex shrink-0 items-center gap-2 text-xs text-ink-soft">
           Storeys
           <input
             type="number"
@@ -130,7 +130,7 @@ export function PlanToolbar({
             className="touch-target w-16 rounded-md border border-line bg-paper px-2 text-base"
           />
         </label>
-        <label className="flex items-center gap-2 text-xs text-ink-soft">
+        <label className="flex shrink-0 items-center gap-2 text-xs text-ink-soft">
           Height
           <input
             type="number"

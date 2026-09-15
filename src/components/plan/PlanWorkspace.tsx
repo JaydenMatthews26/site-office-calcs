@@ -25,10 +25,9 @@ export function PlanWorkspace() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <p className="no-print border-b border-line bg-paper px-3 py-2 text-xs leading-relaxed text-ink-soft md:hidden">
-        Drag with one finger to draw a rectangle or wall. Pinch to zoom, or use +/−. Pan moves the
-        sheet.{' '}
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto md:overflow-hidden">
+      <p className="no-print border-b border-line bg-paper px-3 py-1.5 text-xs text-ink-soft md:hidden">
+        Drag on the sheet to draw.{' '}
         <button
           type="button"
           className="font-semibold text-accent underline"
@@ -36,7 +35,7 @@ export function PlanWorkspace() {
         >
           Manual mode
         </button>{' '}
-        types sizes if drawing is fiddly.
+        types sizes instead.
       </p>
       <PlanToolbar
         tool={tool}
@@ -49,7 +48,7 @@ export function PlanWorkspace() {
         }}
       />
       <PlanMetrics geometry={geometry} />
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-[42dvh] flex-1 overflow-hidden md:min-h-0">
         <PlanEditor
           tool={tool}
           selectedWallId={selectedWallId}
