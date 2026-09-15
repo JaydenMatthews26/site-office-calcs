@@ -134,9 +134,22 @@ export interface CoveringInputs {
   battensPerBundle: number
   /** Extra valley length not implied by a simple rectangle (L-shape, etc.). */
   extraValleyMm: number
+  /** Gable-front dormer count. Sizes below drive extra tiles, battens, felt, valleys and verge. */
   dormers: number
+  /** Dormer front width (cheeks sit this far apart), millimetres. Typical 1200–1800. */
+  dormerWidthMm: number
+  /** Cheek height at the front gable, millimetres. */
+  dormerCheekHeightMm: number
+  /** Horizontal projection of the dormer roof from the main slope, millimetres. */
+  dormerRoofDepthMm: number
   rooflights: number
+  rooflightWidthMm: number
+  rooflightHeightMm: number
   snowGuards: boolean
+  /** Rows of snow-guard / snow-fence above eaves or openings. Typical 1–2. */
+  snowGuardRows: number
+  /** Run of snow guard. null = eaves length from the roof plan. */
+  snowGuardLengthOverrideMm: number | null
 }
 
 export interface RoofingInputs {
@@ -245,8 +258,15 @@ export const DEFAULT_COVERING: CoveringInputs = {
   battensPerBundle: 10,
   extraValleyMm: 0,
   dormers: 0,
+  dormerWidthMm: 1500,
+  dormerCheekHeightMm: 1500,
+  dormerRoofDepthMm: 1800,
   rooflights: 0,
+  rooflightWidthMm: 780,
+  rooflightHeightMm: 1180,
   snowGuards: false,
+  snowGuardRows: 1,
+  snowGuardLengthOverrideMm: null,
 }
 
 export const DEFAULT_ROOFING: RoofingInputs = {

@@ -2,12 +2,17 @@ import type { DerivedGeometry } from '../geometry/derive'
 import type { SkirtingInputs } from '../types/modules'
 import { ceilDiv, mmToM, withWaste } from './units'
 
-export const SKIRTING_PROFILES: { id: SkirtingInputs['profile']; label: string; typicalDepthMm: number }[] = [
-  { id: 'chamfer', label: 'Chamfered', typicalDepthMm: 119 },
-  { id: 'ovolo', label: 'Ovolo', typicalDepthMm: 119 },
-  { id: 'torus', label: 'Torus', typicalDepthMm: 144 },
-  { id: 'ogee', label: 'Ogee', typicalDepthMm: 169 },
-  { id: 'pencil-round', label: 'Pencil round', typicalDepthMm: 94 },
+export const SKIRTING_PROFILES: {
+  id: SkirtingInputs['profile']
+  label: string
+  typicalDepthMm: number
+  path: string
+}[] = [
+  { id: 'chamfer', label: 'Chamfered', typicalDepthMm: 119, path: 'M2 22 L8 6 32 6 38 22' },
+  { id: 'ovolo', label: 'Ovolo', typicalDepthMm: 119, path: 'M2 22 L8 8 Q20 2 32 8 L38 22' },
+  { id: 'torus', label: 'Torus', typicalDepthMm: 144, path: 'M2 22 L6 10 Q20 0 34 10 L38 22' },
+  { id: 'ogee', label: 'Ogee', typicalDepthMm: 169, path: 'M2 22 L10 4 Q20 12 30 4 L38 22' },
+  { id: 'pencil-round', label: 'Pencil round', typicalDepthMm: 94, path: 'M2 22 L6 8 Q20 4 34 8 L38 22' },
 ]
 
 export interface SkirtingResult {

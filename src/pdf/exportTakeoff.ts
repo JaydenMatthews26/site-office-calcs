@@ -83,9 +83,24 @@ function drawJoineryMock(doc: jsPDF, y: number, it: JoineryItem): number {
   doc.setLineWidth(0.3)
   for (let c = 1; c < cols; c++) doc.line(x + (w * c) / cols, y, x + (w * c) / cols, y + h)
   for (let r = 1; r < rows; r++) doc.line(x, y + (h * r) / rows, x + w, y + (h * r) / rows)
+  let extra = 0
+  if (it.sillWidthMm > 0) {
+    doc.setLineWidth(0.5)
+    doc.rect(x - 2, y + h, w + 4, 3)
+    extra += 4
+  }
+  if (it.subSillWidthMm > 0) {
+    doc.setLineWidth(0.35)
+    doc.rect(x - 1, y + h + extra, w + 2, 2.5)
+    extra += 4
+  }
   doc.setFontSize(8)
-  doc.text(`${it.widthMm} × ${it.heightMm} mm  ·  ${it.panes} pane(s)  ·  ${it.glazing}`, x, y + h + 5)
-  return y + h + 10
+  doc.text(
+    `${it.widthMm} × ${it.heightMm} mm  ·  ${it.panes} pane(s)  ·  ${it.glazing}  ·  sill ${it.sillWidthMm}/${it.subSillWidthMm} mm`,
+    x,
+    y + h + extra + 5,
+  )
+  return y + h + extra + 10
 }
 
 export function exportFoundationsPdf(job: JobState, g: DerivedGeometry, r: FoundationsResult) {
@@ -138,6 +153,11 @@ export function exportStairsPdf(job: JobState, g: DerivedGeometry, r: StairsResu
     y = line(doc, y, 'Part K-style check', r.pass ? 'PASS' : 'FAIL')
     if (r.suggestion) y = line(doc, y, 'Suggestion', r.suggestion)
     y = line(doc, y, 'Strings / handrail / balusters / newels', `${r.strings} × ${r.stringLengthMm.toFixed(0)} mm / ${r.handrailM.toFixed(2)} m / ${r.balusters} / ${r.newels}`)
+    y = heading(doc, y + 2, 'Cut list')
+    for (const row of r.cutList) {
+      y = ensureSpace(doc, y)
+      y = line(doc, y, `${row.qty} × ${row.item}`, `${row.lengthMm.toFixed(0)} mm  ·  ${row.section}`)
+    }
     return y
   }, r.notes)
 }
@@ -179,10 +199,22 @@ export function exportSkirtingPdf(job: JobState, g: DerivedGeometry, r: Skirting
 
 export function exportFloorCoverPdf(job: JobState, g: DerivedGeometry, r: FloorCoverResult) {
   pack(job, g, 'Floor coverings', 'floor-coverings', (doc, y) => {
-    y = heading(doc, y, job.floorCover.kind)
+    y = heading(doc, y, `${job.floorCover.kind}  ·  ${r.mode === 'room-by-room' ? 'room-by-room' : 'whole house'}`)
     y = line(doc, y, 'Floor / wall area', `${formatM2(r.floorM2)} / ${formatM2(r.wallM2)}`)
-    y = line(doc, y, 'Tiles / m² / count', `${r.tilesPerM2.toFixed(2)} / ${r.tiles}`)
+    y = line(doc, y, 'Tiles / m² / count', `${r.tilesPerM2.toFixed(2)} / ${r.tiles}  (+${job.floorCover.wastePct}% waste)`)
     y = line(doc, y, 'Grout / adhesive bags', `${r.groutBags} / ${r.adhesiveBags}`)
+    if (r.rooms.length) {
+      y = heading(doc, y + 2, 'Rooms')
+      for (const room of r.rooms) {
+        y = ensureSpace(doc, y)
+        y = line(
+          doc,
+          y,
+          room.name,
+          `${formatM2(room.floorM2)} floor  ·  ${formatM2(room.wallNetM2)} wall  ·  ${formatM2(room.areaM2)} net`,
+        )
+      }
+    }
     return y
   }, r.notes)
 }

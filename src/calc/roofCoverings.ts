@@ -1,6 +1,6 @@
 import type { DerivedGeometry } from '../geometry/derive'
 import type { CoveringInputs, RoofingInputs, RoofShape } from '../types/job'
-import { degToRad, mmToM } from './units'
+import { degToRad, hypot, mmToM } from './units'
 
 export interface RoofPlanDims {
   spanMm: number
@@ -142,6 +142,19 @@ export interface CoveringResult {
   hipTiles: number
   vergeM: number
   valleyM: number
+  /** Extra slope from gable-front dormer roofs (plan / cos pitch). */
+  dormerSlopeM2: number
+  /** Two triangular tile-hung cheeks per dormer. */
+  dormerCheekM2: number
+  /** Extra valley run from two valleys per dormer. */
+  dormerValleyM: number
+  /** Extra verge on two dormer front rakes. */
+  dormerVergeM: number
+  rooflightDeductM2: number
+  rooflightFlashings: number
+  netCoverM2: number
+  snowGuardM: number
+  snowGuardClips: number
   notes: string[]
 }
 
@@ -157,42 +170,80 @@ export interface CoveringResult {
  * Battens: linear metres ≈ slope area / gauge. Sold 10 / bundle, +20% waste (brief).
  * Felt: bitumen 1F ~15 m × 1 m with 150 mm side lap; breathable ~50 m × 1.5 m with 150 mm lap.
  */
+/**
+ * Gable-front dormer extras (equal pitch to the main roof):
+ *   dormer roof plan ≈ width × depth; slope = plan / cos(θ)
+ *   two triangular cheeks ≈ 2 × ½ × depth × cheek height
+ *   two valleys ≈ 2 × dormer slope length (depth / cos θ)
+ *   two front rakes ≈ 2 × hypot(width/2, cheek height) as extra verge
+ *
+ * Rooflights: deduct width × height from the tiled area only (felt and battens still run).
+ *   One flashing kit per unit.
+ *
+ * Snow guards: rows × run (override or eaves length). Clips at 400 mm centres + 1.
+ */
 export function calcCoverings(geometry: DerivedGeometry, roofing: RoofingInputs): CoveringResult {
   const dims = roofPlanDims(geometry, roofing)
   const c = roofing.covering
   const notes: string[] = []
+  const pitchRad = dims.pitchRad
+  const cosPitch = Math.cos(pitchRad)
+
+  const nDormers = Math.max(0, Math.round(c.dormers))
+  const dormerPlanM2 = nDormers * mmToM(c.dormerWidthMm) * mmToM(c.dormerRoofDepthMm)
+  const dormerSlopeM2 = cosPitch > 0 ? dormerPlanM2 / cosPitch : 0
+  const dormerCheekM2 = nDormers * mmToM(c.dormerRoofDepthMm) * mmToM(c.dormerCheekHeightMm)
+  const dormerSlopeLengthMm = cosPitch > 0 ? c.dormerRoofDepthMm / cosPitch : 0
+  const dormerValleyM = nDormers * 2 * mmToM(dormerSlopeLengthMm)
+  const dormerRakeMm = hypot(c.dormerWidthMm / 2, c.dormerCheekHeightMm)
+  const dormerVergeM = nDormers * 2 * mmToM(dormerRakeMm)
+
+  const nLights = Math.max(0, Math.round(c.rooflights))
+  const rooflightDeductM2 = nLights * mmToM(c.rooflightWidthMm) * mmToM(c.rooflightHeightMm)
+  const rooflightFlashings = nLights
+
+  const netCoverM2 = Math.max(0, dims.slopeAreaM2 + dormerSlopeM2 + dormerCheekM2 - rooflightDeductM2)
+  const battenAreaM2 = dims.slopeAreaM2 + dormerSlopeM2 + dormerCheekM2
+  const feltAreaM2 = dims.slopeAreaM2 + dormerSlopeM2
 
   const gaugeMm = coveringGaugeMm(c)
   const coverWidthMm = Math.max(1, c.tileWidthMm - c.sidelapMm)
 
   const tileCoverM2 = mmToM(gaugeMm) * mmToM(coverWidthMm)
-  const tilesRequired = tileCoverM2 > 0 ? Math.ceil(dims.slopeAreaM2 / tileCoverM2) : 0
+  const tilesRequired = tileCoverM2 > 0 ? Math.ceil(netCoverM2 / tileCoverM2) : 0
 
   // Linear metres of batten = rows × eaves width, equivalent to slopeArea / gauge.
-  const battenLinearM = gaugeMm > 0 ? dims.slopeAreaM2 / mmToM(gaugeMm) : 0
+  const battenLinearM = gaugeMm > 0 ? battenAreaM2 / mmToM(gaugeMm) : 0
   const battenLinearWithWasteM = battenLinearM * 1.2
   const metresPerBundle = c.battenLengthM * c.battensPerBundle
   const battenBundles =
     metresPerBundle > 0 ? Math.ceil(battenLinearWithWasteM / metresPerBundle) : 0
 
-  const felt = feltTakeoff(c.felt, dims.slopeAreaM2)
+  const felt = feltTakeoff(c.felt, feltAreaM2)
 
   const ridgeCoverMm = Math.max(1, c.ridgeTileLengthMm - c.ridgeTileLapMm)
   const ridgeTiles = Math.ceil(dims.ridgeMm / ridgeCoverMm)
   const hipTiles = Math.ceil(dims.totalHipMm / ridgeCoverMm)
 
-  if (c.dormers > 0) {
+  const snowGuardM = c.snowGuards
+    ? Math.max(1, c.snowGuardRows) * mmToM(c.snowGuardLengthOverrideMm ?? dims.eavesLengthMm)
+    : 0
+  const snowGuardClips = c.snowGuards ? Math.ceil(snowGuardM / 0.4) + Math.max(1, c.snowGuardRows) : 0
+
+  if (nDormers > 0) {
     notes.push(
-      `${c.dormers} dormer(s) flagged — add cheeks, roof and valley by hand (advanced stub).`,
+      `${nDormers} gable-front dormer(s): +${dormerSlopeM2.toFixed(2)} m² roof, +${dormerCheekM2.toFixed(2)} m² cheeks, +${dormerValleyM.toFixed(2)} m valley, +${dormerVergeM.toFixed(2)} m verge.`,
     )
   }
-  if (c.rooflights > 0) {
+  if (nLights > 0) {
     notes.push(
-      `${c.rooflights} rooflight(s) flagged — deduct from tile count when sizes are known (stub).`,
+      `${nLights} rooflight(s) ${c.rooflightWidthMm} × ${c.rooflightHeightMm} mm — ${rooflightDeductM2.toFixed(2)} m² deducted from tiles, ${rooflightFlashings} flashing kit(s). Felt/battens still run.`,
     )
   }
   if (c.snowGuards) {
-    notes.push('Snow guards opted in — typically 1–2 rows above openings / eaves (stub).')
+    notes.push(
+      `Snow guards: ${Math.max(1, c.snowGuardRows)} row(s) · ${snowGuardM.toFixed(2)} m · ${snowGuardClips} clips at 400 mm centres.`,
+    )
   }
   notes.push('Take-off aid only. Confirm laps, exposure grading and BS 5534 fixing schedule on site.')
 
@@ -209,8 +260,17 @@ export function calcCoverings(geometry: DerivedGeometry, roofing: RoofingInputs)
     feltRollSpec: felt.spec,
     ridgeTiles,
     hipTiles,
-    vergeM: mmToM(dims.totalVergeMm),
-    valleyM: mmToM(dims.valleyMm),
+    vergeM: mmToM(dims.totalVergeMm) + dormerVergeM,
+    valleyM: mmToM(dims.valleyMm) + dormerValleyM,
+    dormerSlopeM2,
+    dormerCheekM2,
+    dormerValleyM,
+    dormerVergeM,
+    rooflightDeductM2,
+    rooflightFlashings,
+    netCoverM2,
+    snowGuardM,
+    snowGuardClips,
     notes,
   }
 }

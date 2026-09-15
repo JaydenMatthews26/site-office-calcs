@@ -3,7 +3,6 @@ import { calcExternalWalls } from '../../calc/externalWalls'
 import { calcExternals } from '../../calc/externals'
 import { calcFinishes } from '../../calc/finishes'
 import { calcFirstFloor } from '../../calc/firstFloor'
-import { calcFloorCover } from '../../calc/floorCover'
 import { calcFoundations, SUBSTRATE_DEPTH_MM } from '../../calc/foundations'
 import { calcGroundFloor } from '../../calc/groundFloor'
 import { calcMep } from '../../calc/mep'
@@ -19,7 +18,6 @@ import {
   exportExternalsPdf,
   exportFinishesPdf,
   exportFirstFloorPdf,
-  exportFloorCoverPdf,
   exportFoundationsPdf,
   exportGroundFloorPdf,
   exportMepPdf,
@@ -208,23 +206,53 @@ export function StairsSection() {
         </SelectField>
         <NumberField label="Total rise" unit="mm" value={r.totalRiseMm} hint={`From storey ${g.storeyHeightMm} mm`} onChange={(e) => patch({ totalRiseOverrideMm: Number(e.target.value) })} />
         <NumberField label="Going" unit="mm" value={input.goingMm} onChange={(e) => patch({ goingMm: Number(e.target.value) })} />
+        <NumberField label="Stair width" unit="mm" value={input.widthMm} hint="Between strings" onChange={(e) => patch({ widthMm: Number(e.target.value) })} />
         <NumberField label="Risers override" min={0} value={input.stepCountOverride ?? r.risers} onChange={(e) => patch({ stepCountOverride: Number(e.target.value) })} />
         <CheckField label="Handrail" checked={input.handrail} onChange={(handrail) => patch({ handrail })} />
         <NumberField label="Baluster spacing" unit="mm" value={input.balusterSpacingMm} hint="≤ 99 mm (Part K sphere)" onChange={(e) => patch({ balusterSpacingMm: Number(e.target.value) })} />
         <NumberField label="Newels" min={2} value={input.newels} onChange={(e) => patch({ newels: Number(e.target.value) })} />
       </div>
-      <div className={`rounded-lg border px-3 py-2 text-sm ${r.pass ? 'border-site bg-emerald-50' : 'border-accent bg-amber-50 text-warn'}`}>
-        {r.pass ? 'Rise, going and pitch pass the brief checks.' : `FAIL — ${r.suggestion}`}
+      <div
+        className={`rounded-lg border px-3 py-2 text-sm ${
+          r.pass ? 'border-site bg-emerald-50' : 'border-red-700 bg-red-50 text-red-800'
+        }`}
+        role="status"
+      >
+        {r.pass
+          ? 'PASS — rise, going and pitch sit inside the brief Part K-style checks.'
+          : `FAIL — ${r.suggestion}`}
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Rise" value={`${r.riseMm.toFixed(1)} mm`} hint={r.passRise ? 'OK' : 'Over 200 mm'} />
-        <Stat label="Going" value={`${r.goingMm} mm`} hint={r.passGoing ? 'OK' : 'Under 220 mm'} />
-        <Stat label="Pitch" value={`${r.pitchDeg.toFixed(1)}°`} hint={r.passPitch ? 'OK' : '≥ 42°'} />
-        <Stat label="2R+G" value={`${r.twoRplusG.toFixed(0)} mm`} />
+        <Stat label="Rise" value={`${r.riseMm.toFixed(1)} mm`} hint={r.passRise ? 'OK' : 'FAIL over 200 mm'} />
+        <Stat label="Going" value={`${r.goingMm} mm`} hint={r.passGoing ? 'OK' : 'FAIL under 220 mm'} />
+        <Stat label="Pitch" value={`${r.pitchDeg.toFixed(1)}°`} hint={r.passPitch ? 'OK' : 'FAIL ≥ 42°'} />
+        <Stat label="2R+G" value={`${r.twoRplusG.toFixed(0)} mm`} hint={r.passTwoRG ? 'OK 550–700' : 'Outside 550–700'} />
         <Stat label="String" value={`${r.stringLengthMm.toFixed(0)} mm`} hint={`× ${r.strings}`} />
         <Stat label="Balusters / newels" value={`${r.balusters} / ${r.newels}`} />
         <Stat label="Handrail" value={formatM(r.handrailM)} />
       </div>
+      <Panel title="Cut list">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="text-[11px] uppercase tracking-wider text-ink-soft">
+              <th className="py-1">Item</th>
+              <th>Qty</th>
+              <th>Length</th>
+              <th>Section</th>
+            </tr>
+          </thead>
+          <tbody>
+            {r.cutList.map((row) => (
+              <tr key={row.item} className="border-t border-line font-mono text-[13px]">
+                <td className="py-1.5 font-sans">{row.item}</td>
+                <td>{row.qty}</td>
+                <td>{row.lengthMm.toFixed(0)} mm</td>
+                <td>{row.section}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Panel>
     </CalcSection>
   )
 }
@@ -327,26 +355,36 @@ export function SkirtingSection() {
   )
   return (
     <CalcSection id="skirting" title="Skirting & architrave" blurb={geomBlurb(g)} exportLabel="Export finishing schedule PDF" onExport={() => exportSkirtingPdf(jobState(), g, r)} footer={<Notes notes={r.notes} />}>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SelectField
-          label="Profile"
-          value={input.profile}
-          onChange={(e) => {
-            const profile = e.target.value as typeof input.profile
-            const typical = SKIRTING_PROFILES.find((p) => p.id === profile)
-            patch({
-              profile,
-              depthMm: typical?.typicalDepthMm ?? input.depthMm,
-              architraveDepthMm: Math.max(69, (typical?.typicalDepthMm ?? 119) - 50),
-            })
-          }}
-        >
-          {SKIRTING_PROFILES.map((p) => (
-            <option key={p.id} value={p.id}>
+      <div role="radiogroup" aria-label="Skirting profile" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {SKIRTING_PROFILES.map((p) => {
+          const on = p.id === input.profile
+          return (
+            <button
+              key={p.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              className={`touch-target flex flex-col items-center rounded-lg border px-2 py-2 text-xs ${
+                on ? 'border-ink bg-paper font-semibold text-ink' : 'border-line text-ink-soft hover:border-ink/40'
+              }`}
+              onClick={() =>
+                patch({
+                  profile: p.id,
+                  depthMm: p.typicalDepthMm,
+                  architraveDepthMm: Math.max(69, p.typicalDepthMm - 50),
+                })
+              }
+            >
+              <svg viewBox="0 0 40 24" className="h-10 w-16 stroke-ink fill-none" aria-hidden>
+                <path d={p.path} />
+              </svg>
               {p.label}
-            </option>
-          ))}
-        </SelectField>
+              <span className="font-mono text-[10px] text-ink-soft">{p.typicalDepthMm} mm</span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SelectField label="Material" value={input.material} onChange={(e) => patch({ material: e.target.value as typeof input.material })}>
           <option value="mdf">MDF (default)</option>
           <option value="pine">Pine</option>
@@ -355,55 +393,9 @@ export function SkirtingSection() {
         <NumberField label="Skirting depth" unit="mm" value={input.depthMm} onChange={(e) => patch({ depthMm: Number(e.target.value) })} />
         <NumberField label="Architrave depth" unit="mm" value={input.architraveDepthMm} hint="One size down" onChange={(e) => patch({ architraveDepthMm: Number(e.target.value) })} />
       </div>
-      <div className="flex gap-4 text-xs text-ink-soft">
-        {SKIRTING_PROFILES.map((p) => (
-          <span key={p.id} className={p.id === input.profile ? 'font-semibold text-ink' : ''}>
-            {p.label}
-            <svg viewBox="0 0 40 24" className="mt-1 h-8 w-14 stroke-ink fill-none">
-              {p.id === 'chamfer' ? <polyline points="2,22 8,6 32,6 38,22" /> : null}
-              {p.id === 'ovolo' ? <path d="M2 22 L8 8 Q20 2 32 8 L38 22" /> : null}
-              {p.id === 'torus' ? <path d="M2 22 L6 10 Q20 0 34 10 L38 22" /> : null}
-              {p.id === 'ogee' ? <path d="M2 22 L10 4 Q20 12 30 4 L38 22" /> : null}
-              {p.id === 'pencil-round' ? <path d="M2 22 L6 8 Q20 4 34 8 L38 22" /> : null}
-            </svg>
-          </span>
-        ))}
-      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Skirting" value={formatM(r.skirtingM)} hint={`${r.skirtingLengths} lengths`} />
         <Stat label="Architrave" value={formatM(r.architraveM)} hint={`${r.architraveLengths} lengths`} />
-      </div>
-    </CalcSection>
-  )
-}
-
-export function FloorCoverSection() {
-  const g = useGeometry()
-  const input = useJobStore((s) => s.floorCover)
-  const patch = useJobStore((s) => s.patchFloorCover)
-  const r = useMemo(() => calcFloorCover(g, input), [g, input])
-  return (
-    <CalcSection id="floor-coverings" title="Floor coverings" blurb={geomBlurb(g)} exportLabel="Export flooring PDF" onExport={() => exportFloorCoverPdf(jobState(), g, r)} footer={<Notes notes={r.notes} />}>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SelectField label="Covering" value={input.kind} onChange={(e) => patch({ kind: e.target.value as typeof input.kind })}>
-          <option value="tile">Tiling</option>
-          <option value="laminate">Laminate</option>
-          <option value="carpet">Carpet</option>
-          <option value="vinyl">Vinyl</option>
-        </SelectField>
-        <NumberField label="Tile length" unit="mm" value={input.tileLengthMm} onChange={(e) => patch({ tileLengthMm: Number(e.target.value) })} />
-        <NumberField label="Tile width" unit="mm" value={input.tileWidthMm} onChange={(e) => patch({ tileWidthMm: Number(e.target.value) })} />
-        <NumberField label="Grout joint" unit="mm" value={input.groutMm} onChange={(e) => patch({ groutMm: Number(e.target.value) })} />
-        <NumberField label="Waste" unit="%" min={5} max={20} value={input.wastePct} hint="Default 10%" onChange={(e) => patch({ wastePct: Number(e.target.value) })} />
-        <CheckField label="Include wall tiling" checked={input.includeWalls} onChange={(includeWalls) => patch({ includeWalls })} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Floor" value={formatM2(r.floorM2)} />
-        <Stat label="Walls" value={formatM2(r.wallM2)} />
-        <Stat label="Tiles / m²" value={r.tilesPerM2.toFixed(2)} />
-        <Stat label="Tiles needed" value={String(r.tiles)} />
-        <Stat label="Grout bags" value={String(r.groutBags)} />
-        <Stat label="Adhesive bags" value={String(r.adhesiveBags)} />
       </div>
     </CalcSection>
   )

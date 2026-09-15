@@ -1,5 +1,26 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
 
+export function TextField({
+  label,
+  hint,
+  ...props
+}: {
+  label: string
+  hint?: string
+} & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">{label}</span>
+      <input
+        type="text"
+        {...props}
+        className="touch-target w-full rounded-md border border-line bg-paper px-3 text-sm outline-none focus:border-accent"
+      />
+      {hint ? <span className="text-[11px] text-ink-soft">{hint}</span> : null}
+    </label>
+  )
+}
+
 export function NumberField({
   label,
   hint,

@@ -61,4 +61,47 @@ describe('roof coverings', () => {
     expect(dims.ridgeMm).toBe(2000)
     expect(dims.vergeCount).toBe(0)
   })
+
+  it('adds dormer slope/cheeks/valleys and deducts rooflights from tiles', () => {
+    const g = boxPlan(8000, 6000)
+    const base = calcCoverings(g, DEFAULT_ROOFING)
+    const withDormer = calcCoverings(g, {
+      ...DEFAULT_ROOFING,
+      covering: {
+        ...DEFAULT_ROOFING.covering,
+        dormers: 1,
+        dormerWidthMm: 1500,
+        dormerCheekHeightMm: 1500,
+        dormerRoofDepthMm: 1800,
+      },
+    })
+    expect(withDormer.dormerSlopeM2).toBeGreaterThan(0)
+    expect(withDormer.dormerCheekM2).toBeGreaterThan(0)
+    expect(withDormer.dormerValleyM).toBeGreaterThan(0)
+    expect(withDormer.tilesRequired).toBeGreaterThan(base.tilesRequired)
+    expect(withDormer.valleyM).toBeGreaterThan(base.valleyM)
+
+    const withLight = calcCoverings(g, {
+      ...DEFAULT_ROOFING,
+      covering: {
+        ...DEFAULT_ROOFING.covering,
+        rooflights: 2,
+        rooflightWidthMm: 780,
+        rooflightHeightMm: 1180,
+      },
+    })
+    expect(withLight.rooflightDeductM2).toBeCloseTo(2 * 0.78 * 1.18, 5)
+    expect(withLight.rooflightFlashings).toBe(2)
+    expect(withLight.tilesRequired).toBeLessThan(base.tilesRequired)
+  })
+
+  it('counts snow-guard length from eaves and clips at 400 mm centres', () => {
+    const g = boxPlan(8000, 6000)
+    const r = calcCoverings(g, {
+      ...DEFAULT_ROOFING,
+      covering: { ...DEFAULT_ROOFING.covering, snowGuards: true, snowGuardRows: 2, snowGuardLengthOverrideMm: null },
+    })
+    expect(r.snowGuardM).toBeCloseTo(2 * (2 * 8), 5)
+    expect(r.snowGuardClips).toBeGreaterThan(0)
+  })
 })

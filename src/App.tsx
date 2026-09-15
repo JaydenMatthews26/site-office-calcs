@@ -3,6 +3,7 @@ import { FasciasSection } from './components/fascias/FasciasSection'
 import { PlanWorkspace } from './components/plan/PlanWorkspace'
 import { RoofingSection } from './components/roofing/RoofingSection'
 import { StubSection } from './components/stubs/StubSection'
+import { FloorCoverSection } from './components/takeoff/FloorCoverSection'
 import { JoinerySection } from './components/takeoff/JoinerySection'
 import { StructureSection } from './components/takeoff/StructureSection'
 import {
@@ -10,7 +11,6 @@ import {
   ExternalsSection,
   FinishesSection,
   FirstFloorSection,
-  FloorCoverSection,
   FoundationsSection,
   GroundFloorSection,
   MepSection,
