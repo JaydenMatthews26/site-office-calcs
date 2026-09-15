@@ -171,7 +171,7 @@ export function JoinerySection() {
                 onChange={(e) => patchItem(it.id, { subSillWidthMm: Number(e.target.value) })}
               />
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="mt-3 flex flex-wrap items-end gap-4">
               <label className="text-sm">
                 Photo of opening
                 <input
@@ -196,9 +196,12 @@ export function JoinerySection() {
                   </button>
                 </>
               ) : null}
-              <JoineryPreview item={it} />
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">2D mock-up</span>
+                <JoineryPreview item={it} />
+              </div>
               <button type="button" className="text-sm text-accent" onClick={() => removeItem(it.id)}>
-                Remove
+                Remove item
               </button>
             </div>
           </Panel>
@@ -219,16 +222,20 @@ function JoineryPreview({
   const sill = item.sillWidthMm > 0
   const sub = item.subSillWidthMm > 0
   return (
-    <svg viewBox="0 0 80 62" className="h-14 w-20 stroke-ink fill-none" aria-hidden>
-      <rect x="2" y="2" width="76" height="44" strokeWidth="2" />
+    <svg
+      viewBox="0 0 80 62"
+      className="h-16 w-24 rounded border border-line bg-paper stroke-ink"
+      aria-label="2D joinery mock-up"
+    >
+      <rect x="2" y="2" width="76" height="44" fill="#e8eef4" strokeWidth="2" />
       {Array.from({ length: cols - 1 }, (_, i) => (
         <line key={`c${i}`} x1={((i + 1) * 76) / cols + 2} y1="2" x2={((i + 1) * 76) / cols + 2} y2="46" />
       ))}
       {Array.from({ length: rows - 1 }, (_, i) => (
         <line key={`r${i}`} x1="2" y1={((i + 1) * 44) / rows + 2} x2="78" y2={((i + 1) * 44) / rows + 2} />
       ))}
-      {sill ? <rect x="0" y="46" width="80" height="7" strokeWidth="1.5" /> : null}
-      {sub ? <rect x="4" y="53" width="72" height="6" strokeWidth="1" /> : null}
+      {sill ? <rect x="0" y="46" width="80" height="7" fill="#d9d2c5" strokeWidth="1.5" /> : null}
+      {sub ? <rect x="4" y="53" width="72" height="6" fill="#c4bba8" strokeWidth="1" /> : null}
     </svg>
   )
 }
