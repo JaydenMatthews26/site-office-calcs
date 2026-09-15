@@ -14,6 +14,8 @@ export type CoveringType = 'tile' | 'slate'
 export type FeltStyle = 'bitumen' | 'breathable'
 export type CarpentryMode = 'cut' | 'truss'
 export type TrussType = 'fink' | 'attic' | 'mono-pitch' | 'scissor' | 'raised-tie'
+export type FasciaMaterial = 'pvcu' | 'timber'
+export type GutterMaterial = 'plastic' | 'metal' | 'aluminium' | 'copper'
 
 export interface PointMm {
   x: number
@@ -84,10 +86,56 @@ export interface RoofingInputs {
   cutListOptIn: boolean
 }
 
+export interface FasciasInputs {
+  material: FasciaMaterial
+  /**
+   * Override eaves run used for fascia, soffit and (on gables) gutter, millimetres.
+   * null = derived from plan / roof shape.
+   */
+  eavesRunOverrideMm: number | null
+  /** Finished fascia board depth (the painted face), millimetres. Typical 175 mm. */
+  fasciaDepthMm: number
+  /** Soffit width override (mm). null = roofing eaves overhang. */
+  soffitWidthOverrideMm: number | null
+  /** Cover width of one soffit board as sold, millimetres (typically 300 mm). */
+  soffitBoardWidthMm: number
+  /** Board length as sold, metres. PVCU ~5.0 m, timber PAR ~5.1 m. */
+  boardLengthM: number
+  /** Cutting / joint waste on fascia, soffit and barge boards, percent. */
+  wastePct: number
+  includeBargeboards: boolean
+  /** Stock PVCU colour (ignored for timber — timber uses paintColour). */
+  pvcuColour: string
+  /** Hex paint colour for timber fascia/soffit/barge. */
+  paintColour: string
+  /** Manufacturer coverage, m² per litre (one coat). Typical exterior wood ~12 m²/L. */
+  paintCoverageM2PerL: number
+  paintCoats: number
+  /** Tin size, litres. Typical 2.5 L. */
+  paintTinL: number
+  gutterMaterial: GutterMaterial
+  /** Street-front / eaves elevation width. null = longer plan dimension. */
+  propertyWidthOverrideMm: number | null
+  /** Gutter height above ground / drain. null = plan storey height. */
+  eavesHeightOverrideMm: number | null
+  /** Downpipe count. null = derived from roof shape and ~50 m² per outlet. */
+  outletsOverride: number | null
+  /** Offset elbows. null = 2 × outlets. */
+  elbowsOverride: number | null
+  /** Downpipe length per outlet, mm. null = eaves height. */
+  downpipeLengthOverrideMm: number | null
+  /** Override total gutter run, mm. null = eaves run (gable: 2 × property width). */
+  gutterRunOverrideMm: number | null
+  gutterPieceLengthM: number
+  downpipePieceLengthM: number
+  gutterBracketCentresMm: number
+}
+
 export interface JobState {
   jobName: string
   plan: Plan
   roofing: RoofingInputs
+  fascias: FasciasInputs
   activeSectionId: string
   /**
    * Per-section include flags for PDF / later whole-job print.
@@ -130,6 +178,32 @@ export const DEFAULT_ROOFING: RoofingInputs = {
   cutListOptIn: false,
 }
 
+export const DEFAULT_FASCIAS: FasciasInputs = {
+  material: 'pvcu',
+  eavesRunOverrideMm: null,
+  fasciaDepthMm: 175,
+  soffitWidthOverrideMm: null,
+  soffitBoardWidthMm: 300,
+  boardLengthM: 5,
+  wastePct: 10,
+  includeBargeboards: true,
+  pvcuColour: 'white',
+  paintColour: '#f4f1e8',
+  paintCoverageM2PerL: 12,
+  paintCoats: 2,
+  paintTinL: 2.5,
+  gutterMaterial: 'plastic',
+  propertyWidthOverrideMm: null,
+  eavesHeightOverrideMm: null,
+  outletsOverride: null,
+  elbowsOverride: null,
+  downpipeLengthOverrideMm: null,
+  gutterRunOverrideMm: null,
+  gutterPieceLengthM: 4,
+  downpipePieceLengthM: 4,
+  gutterBracketCentresMm: 800,
+}
+
 export const DEFAULT_PLAN: Plan = {
   walls: [],
   openings: [],
@@ -140,9 +214,11 @@ export const DEFAULT_JOB: JobState = {
   jobName: 'Untitled job',
   plan: DEFAULT_PLAN,
   roofing: DEFAULT_ROOFING,
+  fascias: DEFAULT_FASCIAS,
   activeSectionId: 'plan',
   sectionEnabled: {
     roofing: true,
+    fascias: true,
   },
 }
 

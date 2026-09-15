@@ -79,8 +79,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
           </label>
           <p className="max-w-md text-xs leading-relaxed text-ink-soft">
-            Draw once on the plan. Roofing (and every later section) reads wall lengths, areas and openings
-            from that geometry.
+            Draw once on the plan. Roofing, fascias and every later section read wall lengths, areas
+            and openings from that geometry.
           </p>
           <button
             type="button"

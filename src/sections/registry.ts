@@ -5,7 +5,7 @@ export type { SectionDef } from './types'
 /**
  * Modular section registry.
  *
- * Roofing is implemented. Every later calculator should:
+ * Roofing and fascias are implemented. Every later calculator should:
  *  1. Add a definition here (id, title, status).
  *  2. Read derived geometry from the floor plan — never re-ask for wall lengths / areas.
  *  3. Register a panel component in App.tsx (or a section router).
@@ -33,8 +33,8 @@ export const SECTIONS: SectionDef[] = [
     id: 'fascias',
     title: 'Fascias, soffits & guttering',
     shortTitle: 'Fascias',
-    status: 'stub',
-    summary: 'Eaves perimeter, verge, downpipes.',
+    status: 'ready',
+    summary: 'Eaves perimeter, timber paint, downpipes.',
     toggleable: true,
   },
   {

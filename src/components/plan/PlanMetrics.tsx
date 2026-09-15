@@ -26,7 +26,7 @@ export function PlanMetrics({ geometry }: { geometry: DerivedGeometry }) {
           {geometry.wallCount === 0
             ? 'Empty sheet — drag a rectangle or insert the 8 × 6 m sample. Scale: 40 px = 1 m, snap 100 mm.'
             : geometry.closedOutline
-              ? 'Closed external outline. Roofing reads these figures automatically.'
+              ? 'Closed external outline. Roofing and fascias read these figures automatically.'
               : 'Outline is not closed — footprint uses the bounding box until walls join.'}
         </p>
       </div>

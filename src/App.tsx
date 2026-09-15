@@ -1,4 +1,5 @@
 import { AppShell } from './components/layout/AppShell'
+import { FasciasSection } from './components/fascias/FasciasSection'
 import { PlanWorkspace } from './components/plan/PlanWorkspace'
 import { RoofingSection } from './components/roofing/RoofingSection'
 import { StubSection } from './components/stubs/StubSection'
@@ -13,6 +14,8 @@ export default function App() {
         <PlanWorkspace />
       ) : activeSectionId === 'roofing' ? (
         <RoofingSection />
+      ) : activeSectionId === 'fascias' ? (
+        <FasciasSection />
       ) : (
         <StubSection sectionId={activeSectionId} />
       )}

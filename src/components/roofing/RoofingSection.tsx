@@ -14,6 +14,7 @@ export function RoofingSection() {
   const jobName = useJobStore((s) => s.jobName)
   const plan = useJobStore((s) => s.plan)
   const roofing = useJobStore((s) => s.roofing)
+  const fascias = useJobStore((s) => s.fascias)
   const sectionEnabled = useJobStore((s) => s.sectionEnabled)
   const patchRoofing = useJobStore((s) => s.patchRoofing)
 
@@ -181,6 +182,7 @@ export function RoofingSection() {
                   jobName,
                   plan,
                   roofing,
+                  fascias,
                   activeSectionId: 'roofing',
                   sectionEnabled,
                 },

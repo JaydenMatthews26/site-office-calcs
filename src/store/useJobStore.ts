@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import {
   DEFAULT_JOB,
   DEFAULT_PLAN,
+  type FasciasInputs,
   type JobState,
   type Opening,
   type Plan,
@@ -33,6 +34,7 @@ interface JobStore extends JobState, HistorySlice {
   setStoreyHeight: (mm: number) => void
   patchRoofing: (patch: Partial<RoofingInputs>) => void
   patchCovering: (patch: Partial<RoofingInputs['covering']>) => void
+  patchFascias: (patch: Partial<FasciasInputs>) => void
   insertSampleBuilding: () => void
   clearPlan: () => void
   resetJob: () => void
@@ -114,6 +116,7 @@ export const useJobStore = create<JobStore>()(
         set((s) => ({
           roofing: { ...s.roofing, covering: { ...s.roofing.covering, ...patch } },
         })),
+      patchFascias: (patch) => set((s) => ({ fascias: { ...s.fascias, ...patch } })),
 
       insertSampleBuilding: () => {
         const { walls, openings } = rectangularBuilding(8000, 6000)
@@ -162,6 +165,7 @@ export const useJobStore = create<JobStore>()(
         jobName: s.jobName,
         plan: s.plan,
         roofing: s.roofing,
+        fascias: s.fascias,
         activeSectionId: s.activeSectionId,
         sectionEnabled: s.sectionEnabled,
       }),
@@ -182,6 +186,7 @@ export const useJobStore = create<JobStore>()(
             ...p.roofing,
             covering: { ...current.roofing.covering, ...p.roofing?.covering },
           },
+          fascias: { ...current.fascias, ...p.fascias },
           sectionEnabled,
         }
       },
