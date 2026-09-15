@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useJobStore } from '../../store/useJobStore'
+import { IncludeToggle } from '../ui/Fields'
 
 export function CalcSection({
   id,
@@ -29,15 +30,11 @@ export function CalcSection({
             <h2 className="text-lg font-semibold">{title}</h2>
             <div className="mt-1 max-w-2xl text-sm text-ink-soft">{blurb}</div>
           </div>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-accent"
-              checked={included}
-              onChange={(e) => toggleSection(id, e.target.checked)}
-            />
-            Include in job / PDF
-          </label>
+          <IncludeToggle
+            label="Include in job / PDF"
+            checked={included}
+            onChange={(v) => toggleSection(id, v)}
+          />
         </div>
         <div>
           <button

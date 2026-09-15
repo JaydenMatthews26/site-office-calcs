@@ -5,7 +5,7 @@ import { useGeometry } from '../../hooks/useGeometry'
 import { exportFasciasPdf } from '../../pdf/exportFascias'
 import { useJobStore } from '../../store/useJobStore'
 import { jobState } from '../takeoff/geom'
-import { NumberField, Stat } from '../ui/Fields'
+import { IncludeToggle, NumberField, Stat } from '../ui/Fields'
 import { FasciaSoffitPanel, GutteringPanel } from './FasciaPanels'
 
 export function FasciasSection() {
@@ -40,15 +40,11 @@ export function FasciasSection() {
               fields below stay editable.
             </p>
           </div>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-accent"
-              checked={included}
-              onChange={(e) => useJobStore.getState().toggleSection('fascias', e.target.checked)}
-            />
-            Include fascias in job / PDF
-          </label>
+          <IncludeToggle
+            label="Include fascias in job / PDF"
+            checked={included}
+            onChange={(v) => useJobStore.getState().toggleSection('fascias', v)}
+          />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
