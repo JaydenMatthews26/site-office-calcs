@@ -6,8 +6,13 @@ import { NumberField, Panel } from '../ui/Fields'
 export function ManualMeasurements() {
   const manual = useJobStore((s) => s.manual)
   const patchManual = useJobStore((s) => s.patchManual)
+  const copyManualFromPlan = useJobStore((s) => s.copyManualFromPlan)
+  const wallCount = useJobStore((s) => s.plan.walls.length)
   const setStoreys = useJobStore((s) => s.setStoreys)
+  const setStoreyHeight = useJobStore((s) => s.setStoreyHeight)
   const setActive = useJobStore((s) => s.setActiveSection)
+  const roofing = useJobStore((s) => s.roofing)
+  const patchRoofing = useJobStore((s) => s.patchRoofing)
 
   return (
     <div className="h-full overflow-y-auto">
@@ -17,6 +22,21 @@ export function ManualMeasurements() {
             No canvas in this mode. These figures are the same take-off model the calculators read
             (span, length, footprint, eaves/perimeter, openings, heights). UK units.
           </p>
+          <div className="mb-4">
+            <button
+              type="button"
+              disabled={wallCount === 0}
+              onClick={copyManualFromPlan}
+              className="touch-target rounded-md border border-line px-3 text-sm hover:border-accent disabled:opacity-40"
+            >
+              Copy from drawn plan
+            </button>
+            <p className="mt-1 text-[11px] text-ink-soft">
+              {wallCount === 0
+                ? 'Draw a plan first if you want to map canvas sizes into these fields.'
+                : 'Maps the canvas into these fields. Pitch and eaves overhang stay on roofing — not duplicated here.'}
+            </p>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <NumberField
               label="Span (shorter side)"
@@ -83,7 +103,7 @@ export function ManualMeasurements() {
               min={2100}
               step={50}
               value={manual.storeyHeightMm}
-              onChange={(e) => patchManual({ storeyHeightMm: Number(e.target.value) })}
+              onChange={(e) => setStoreyHeight(Number(e.target.value))}
             />
             <NumberField
               label="Storeys"
@@ -132,13 +152,36 @@ export function ManualMeasurements() {
             />
           </div>
         </Panel>
-        <p className="text-sm text-ink-soft">
-          Roofing next:{' '}
-          <button type="button" className="underline" onClick={() => setActive('roofing')}>
-            open roofing
-          </button>
-          . Eaves overhang and pitch still live there.
-        </p>
+        <Panel title="Roof pitch & eaves overhang">
+          <p className="mb-3 text-sm text-ink-soft">
+            Same fields as the roofing section — edit once, both modes use them.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <NumberField
+              label="Pitch"
+              unit="°"
+              min={12}
+              max={60}
+              value={roofing.pitchDeg}
+              onChange={(e) => patchRoofing({ pitchDeg: Number(e.target.value) })}
+            />
+            <NumberField
+              label="Eaves overhang"
+              unit="mm"
+              min={0}
+              step={50}
+              value={roofing.eavesOverhangMm}
+              onChange={(e) => patchRoofing({ eavesOverhangMm: Number(e.target.value) })}
+            />
+          </div>
+          <p className="mt-3 text-sm text-ink-soft">
+            Coverings and carpentry live on{' '}
+            <button type="button" className="underline" onClick={() => setActive('roofing')}>
+              roofing
+            </button>
+            .
+          </p>
+        </Panel>
       </div>
     </div>
   )

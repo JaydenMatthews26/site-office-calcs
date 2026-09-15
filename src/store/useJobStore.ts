@@ -30,8 +30,9 @@ interface JobStore extends JobState, HistorySlice {
   setJobName: (name: string) => void
   setActiveSection: (id: string) => void
   toggleSection: (id: string, enabled: boolean) => void
-  setInputMode: (mode: InputMode) => void
+  setInputMode: (mode: InputMode) => boolean
   patchManual: (patch: Partial<ManualTakeoff>) => void
+  copyManualFromPlan: () => void
   setPlan: (plan: Plan) => void
   replaceWalls: (walls: Wall[], openings?: Opening[]) => void
   addWall: (wall: Wall) => void
@@ -92,34 +93,49 @@ export const useJobStore = create<JobStore>()(
 
       setInputMode: (mode) => {
         const { inputMode, plan, manual } = get()
-        if (mode === inputMode) return
+        if (mode === inputMode) return true
         if (mode === 'manual') {
-          const g = deriveGeometry(plan)
           const fromPlan = plan.walls.length > 0
           if (fromPlan && hasManualData(manual)) {
             const copy = window.confirm(
-              'Copy the drawn plan into typed fields? This replaces current manual sizes. Cancel keeps your typed figures.',
+              'Copy the drawn plan into typed fields? This replaces current manual sizes. Cancel keeps your typed figures. The canvas is not deleted.',
             )
-            set({ inputMode: 'manual', manual: copy ? manualFromGeometry(g, plan) : manual })
-            return
+            set({
+              inputMode: 'manual',
+              manual: copy ? manualFromGeometry(deriveGeometry(plan), plan) : manual,
+            })
+            return true
           }
           set({
             inputMode: 'manual',
-            manual: fromPlan ? manualFromGeometry(g, plan) : manual,
+            manual: fromPlan ? manualFromGeometry(deriveGeometry(plan), plan) : manual,
           })
-          return
+          return true
         }
         const emptyCanvas = plan.walls.length === 0
-        const ok = window.confirm(
-          emptyCanvas
-            ? 'Switch to draw plan? The canvas is empty. Typed measurements stay saved if you switch back.'
-            : 'Switch to draw plan? Calculators will use the canvas instead of typed sizes. Typed figures stay saved.',
-        )
-        if (!ok) return
+        if (emptyCanvas && hasManualData(manual)) {
+          const ok = window.confirm(
+            'Switch to draw plan? The canvas is empty, so calculators will have no geometry until you draw. Typed measurements stay saved if you switch back.',
+          )
+          if (!ok) return false
+        }
         set({ inputMode: 'draw' })
+        return true
       },
 
       patchManual: (patch) => set((s) => ({ manual: { ...s.manual, ...patch } })),
+
+      copyManualFromPlan: () => {
+        const { plan, manual } = get()
+        if (plan.walls.length === 0) return
+        if (hasManualData(manual)) {
+          const ok = window.confirm(
+            'Replace typed sizes with the drawn plan? Roof pitch and eaves overhang stay on the roofing section.',
+          )
+          if (!ok) return
+        }
+        set({ manual: manualFromGeometry(deriveGeometry(plan), plan) })
+      },
 
       setPlan: (plan) =>
         set((s) => ({ plan, past: pushPlan(s.past, s.plan), future: [] })),

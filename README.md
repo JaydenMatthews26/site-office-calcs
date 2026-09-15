@@ -24,12 +24,12 @@ Then open the URL Vite prints (usually `http://localhost:5173`).
 
 ## Job input mode
 
-At the top of the sidebar:
+**Job input** at the top of the app (and the sidebar) chooses how the job starts:
 
-1. **Draw plan** — Konva millimetre canvas (default).
-2. **Manual** — type span, length, footprint, perimeter, partitions, heights, opening counts. No canvas.
+1. **Draw plan** — Konva millimetre canvas (default). Geometry drives automatic take-offs.
+2. **Manual** — type span, length, footprint, perimeter/eaves, partitions, heights, opening counts. No canvas.
 
-Switching warns before replacing mapped data. Both modes feed the same calculators.
+Both modes write the same take-off model. Calculators never care which mode produced span, eaves or opening counts. Switching maps what it can; you are warned only if typed sizes would be overwritten, or if Draw plan would leave calculators on an empty canvas. The last choice is stored in `localStorage`. Pitch and eaves overhang live once on roofing (also shown in Manual so you are not asked twice).
 
 ## What this app does
 

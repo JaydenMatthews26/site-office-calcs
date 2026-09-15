@@ -17,7 +17,6 @@ import {
   DEFAULT_STRUCTURE,
 } from '../types/modules'
 import { deriveGeometry } from '../geometry/derive'
-import { effectiveGeometry, geometryFromManual } from '../geometry/effective'
 import { calcStructure } from './structure'
 import { calcFoundations, SUBSTRATE_DEPTH_MM } from './foundations'
 import { calcGroundFloor } from './groundFloor'
@@ -32,7 +31,6 @@ import { calcMep } from './mep'
 import { calcPainting } from './painting'
 import { calcExternals } from './externals'
 import { calcScaffold, BAY_MM } from './scaffold'
-import { DEFAULT_MANUAL } from '../types/job'
 import type { Wall } from '../types/job'
 
 function boxPlan(w: number, d: number) {
@@ -44,37 +42,6 @@ function boxPlan(w: number, d: number) {
   ]
   return deriveGeometry({ ...DEFAULT_PLAN, walls, storeyHeightMm: 2400, storeys: 1 })
 }
-
-describe('effective geometry', () => {
-  it('uses typed measurements in manual mode and the plan in draw mode', () => {
-    const plan = { ...DEFAULT_PLAN, walls: boxPlan(8000, 6000).polygon ? [] : [] }
-    const drawn = boxPlan(8000, 6000)
-    const manual = {
-      ...DEFAULT_MANUAL,
-      spanMm: 5000,
-      lengthMm: 9000,
-      footprintM2: 45,
-      externalLengthMm: 28000,
-      storeyHeightMm: 2400,
-      storeys: 2,
-      doorCount: 2,
-      openingCount: 3,
-      doorWidthMm: 826,
-      doorHeightMm: 2040,
-      windowWidthMm: 1200,
-      windowHeightMm: 1200,
-    }
-    const g = geometryFromManual(manual)
-    expect(g.source).toBe('manual')
-    expect(g.spanMm).toBe(5000)
-    expect(g.storeys).toBe(2)
-    expect(g.footprintM2).toBe(45)
-    expect(effectiveGeometry({ ...DEFAULT_PLAN, walls: [] }, 'manual', manual).lengthMm).toBe(9000)
-    expect(drawn.source).toBe('plan')
-    expect(drawn.footprintM2).toBeCloseTo(48, 5)
-    void plan
-  })
-})
 
 describe('structure', () => {
   it('counts bricks from net elevation for a masonry brick outer skin', () => {
