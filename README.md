@@ -34,7 +34,7 @@ Both modes write the same take-off model. Calculators never care which mode prod
 ## What this app does
 
 1. **Floor plan editor (Konva)** — rectangular building, external walls, partitions, doorways and openings (40 px = 1 m, snap 100 mm).
-2. **Roofing — coverings + carpentry** (cut / truss) plus opt-in cut list.
+2. **Roofing — coverings + carpentry** (cut / truss) plus opt-in cut list. Dormers, rooflights and snow guards have sizes that change tiles, battens, felt, valleys and clips.
 3. **Fascias, soffits & guttering** — PVCU or timber (timber paint + tins). Guttering materials and downpipes.
 4. **Building structure** — masonry or timber frame; skins unlock materials; block outer → render; steel-brick hybrid flags an SE.
 5. **Windows & doors** — numbered schedule (WG1, FD1…), photos, glazing, 2D mock-up PDF.
@@ -42,11 +42,11 @@ Both modes write the same take-off model. Calculators never care which mode prod
 7. **Ground floor** — slab / beam & block / timber; Part L insulation; DPM; UFH / radon flags.
 8. **Internal walls** — timber / metal stud or block; board layers; door lintels.
 9. **First floor** — joists, noggins, strutting, herringbone, stair trimmers.
-10. **Stairs** — Part K-style rise/going/pitch checks (brief: 200 / 220 / 42°); cut list.
+10. **Stairs** — Part K-style rise/going/pitch checks (brief: 200 / 220 / 42°); red FAIL + suggestion; cut list.
 11. **External walls above DPC** — cavity, lintel schedule (Catnic vs concrete + padstones), cavity barriers.
 12. **Internal finishes** — board, skim, paint tins from wall/ceiling areas (openings deducted).
-13. **Skirting & architrave** — profile picker, MDF/pine/oak, finishing PDF.
-14. **Floor coverings** — tile size, grout, waste 5–20%, grout/adhesive bags.
+13. **Skirting & architrave** — visual profile thumbnails, MDF/pine/oak, finishing PDF.
+14. **Floor coverings** — **whole house** (footprint × storeys) **or room-by-room** (editable rooms: name, floor m², optional wall-tile m²; openings deducted from wall tile). Tile size, grout, waste 5–20%, grout/adhesive bags.
 15. **Plumbing & electrics** — materials guide only (not BS 7671 / heat-loss design).
 16. **Painting** — new plaster / existing / render coats; woodwork; external fascias/joinery.
 17. **Externals** — drive, fence, soakaway, 110 mm drainage.

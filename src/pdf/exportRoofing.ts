@@ -89,6 +89,28 @@ export function exportRoofingPdf(args: {
     y = line(doc, y, 'Ridge tiles', String(c.ridgeTiles))
     y = line(doc, y, 'Hip tiles', String(c.hipTiles))
     y = line(doc, y, 'Verge / valley', `${c.vergeM.toFixed(2)} m / ${c.valleyM.toFixed(2)} m`)
+    if (c.dormerSlopeM2 > 0 || c.rooflightDeductM2 > 0 || c.snowGuardM > 0) {
+      y = line(doc, y, 'Net tiled area', formatM2(c.netCoverM2))
+    }
+    if (c.dormerSlopeM2 > 0) {
+      y = line(
+        doc,
+        y,
+        'Dormers',
+        `${job.roofing.covering.dormers}  ·  roof ${formatM2(c.dormerSlopeM2)}  ·  cheeks ${formatM2(c.dormerCheekM2)}  ·  valley ${formatM(c.dormerValleyM)}`,
+      )
+    }
+    if (c.rooflightFlashings > 0) {
+      y = line(
+        doc,
+        y,
+        'Rooflights',
+        `${c.rooflightFlashings}  ·  deduct ${formatM2(c.rooflightDeductM2)}  ·  flashing kits ${c.rooflightFlashings}`,
+      )
+    }
+    if (c.snowGuardM > 0) {
+      y = line(doc, y, 'Snow guards', `${formatM(c.snowGuardM)}  ·  ${c.snowGuardClips} clips`)
+    }
   }
 
   if (job.roofing.carpentryEnabled) {

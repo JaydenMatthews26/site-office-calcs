@@ -26,7 +26,7 @@ export const SECTIONS: SectionDef[] = [
     title: 'Roofing',
     shortTitle: 'Roof',
     status: 'ready',
-    summary: 'Coverings + carpentry from plan geometry.',
+    summary: 'Dormers, rooflights and snow guards from plan geometry.',
     toggleable: true,
   },
   {
@@ -122,7 +122,7 @@ export const SECTIONS: SectionDef[] = [
     title: 'Floor coverings',
     shortTitle: 'Flooring',
     status: 'ready',
-    summary: 'Tiles, grout, adhesive, waste %.',
+    summary: 'Whole house or room-by-room tiles, grout, waste.',
     toggleable: true,
   },
   {

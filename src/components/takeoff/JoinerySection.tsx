@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { calcJoinery, syncJoineryFromPlan } from '../../calc/joinery'
+import { calcJoinery, syncJoineryFromGeometry } from '../../calc/joinery'
 import { formatM2 } from '../../calc/units'
 import { useGeometry } from '../../hooks/useGeometry'
 import { exportJoineryPdf } from '../../pdf/exportTakeoff'
@@ -30,18 +30,28 @@ function readPhoto(file: File, cb: (url: string) => void) {
 export function JoinerySection() {
   const g = useGeometry()
   const plan = useJobStore((s) => s.plan)
+  const manual = useJobStore((s) => s.manual)
   const joinery = useJobStore((s) => s.joinery)
   const setJoineryItems = useJobStore((s) => s.setJoineryItems)
   const patchItem = useJobStore((s) => s.patchJoineryItem)
   const addItem = useJobStore((s) => s.addJoineryItem)
   const removeItem = useJobStore((s) => s.removeJoineryItem)
-  const r = useMemo(() => calcJoinery(plan, g, joinery), [plan, g, joinery])
+  const sizes = useMemo(
+    () => ({
+      doorWidthMm: manual.doorWidthMm,
+      doorHeightMm: manual.doorHeightMm,
+      windowWidthMm: manual.windowWidthMm,
+      windowHeightMm: manual.windowHeightMm,
+    }),
+    [manual.doorWidthMm, manual.doorHeightMm, manual.windowWidthMm, manual.windowHeightMm],
+  )
+  const r = useMemo(() => calcJoinery(plan, g, joinery, sizes), [plan, g, joinery, sizes])
 
   useEffect(() => {
     if (joinery.items.length > 0) return
-    const seeded = syncJoineryFromPlan(plan)
+    const seeded = syncJoineryFromGeometry(plan, g, sizes)
     if (seeded.length) setJoineryItems(seeded)
-  }, [joinery.items.length, plan, setJoineryItems])
+  }, [joinery.items.length, plan, g, setJoineryItems, sizes])
 
   const items = joinery.items.length > 0 ? joinery.items : r.items
 
@@ -59,9 +69,9 @@ export function JoinerySection() {
         <button
           type="button"
           className="touch-target rounded-md border border-line px-3 text-sm"
-          onClick={() => setJoineryItems(syncJoineryFromPlan(plan))}
+          onClick={() => setJoineryItems(syncJoineryFromGeometry(plan, g, sizes))}
         >
-          Sync from plan
+          {g.source === 'manual' ? 'Sync from measurements' : 'Sync from plan'}
         </button>
         <button
           type="button"
@@ -175,7 +185,16 @@ export function JoinerySection() {
                 />
               </label>
               {it.photoDataUrl ? (
-                <img src={it.photoDataUrl} alt="" className="h-16 w-20 rounded object-cover" />
+                <>
+                  <img src={it.photoDataUrl} alt={`${it.code} opening`} className="h-16 w-20 rounded object-cover" />
+                  <button
+                    type="button"
+                    className="text-sm text-ink-soft"
+                    onClick={() => patchItem(it.id, { photoDataUrl: null })}
+                  >
+                    Remove photo
+                  </button>
+                </>
               ) : null}
               <JoineryPreview item={it} />
               <button type="button" className="text-sm text-accent" onClick={() => removeItem(it.id)}>
@@ -190,18 +209,26 @@ export function JoinerySection() {
   )
 }
 
-function JoineryPreview({ item }: { item: { widthMm: number; heightMm: number; panes: number } }) {
+function JoineryPreview({
+  item,
+}: {
+  item: { widthMm: number; heightMm: number; panes: number; sillWidthMm: number; subSillWidthMm: number }
+}) {
   const cols = Math.max(1, Math.min(item.panes, 3))
   const rows = Math.max(1, Math.ceil(item.panes / cols))
+  const sill = item.sillWidthMm > 0
+  const sub = item.subSillWidthMm > 0
   return (
-    <svg viewBox="0 0 80 50" className="h-12 w-20 stroke-ink fill-none" aria-hidden>
-      <rect x="2" y="2" width="76" height="46" strokeWidth="2" />
+    <svg viewBox="0 0 80 62" className="h-14 w-20 stroke-ink fill-none" aria-hidden>
+      <rect x="2" y="2" width="76" height="44" strokeWidth="2" />
       {Array.from({ length: cols - 1 }, (_, i) => (
-        <line key={`c${i}`} x1={((i + 1) * 76) / cols + 2} y1="2" x2={((i + 1) * 76) / cols + 2} y2="48" />
+        <line key={`c${i}`} x1={((i + 1) * 76) / cols + 2} y1="2" x2={((i + 1) * 76) / cols + 2} y2="46" />
       ))}
       {Array.from({ length: rows - 1 }, (_, i) => (
-        <line key={`r${i}`} x1="2" y1={((i + 1) * 46) / rows + 2} x2="78" y2={((i + 1) * 46) / rows + 2} />
+        <line key={`r${i}`} x1="2" y1={((i + 1) * 44) / rows + 2} x2="78" y2={((i + 1) * 44) / rows + 2} />
       ))}
+      {sill ? <rect x="0" y="46" width="80" height="7" strokeWidth="1.5" /> : null}
+      {sub ? <rect x="4" y="53" width="72" height="6" strokeWidth="1" /> : null}
     </svg>
   )
 }

@@ -17,7 +17,7 @@ import {
   type RoofingInputs,
   type Wall,
 } from '../types/job'
-import type { JoineryItem } from '../types/modules'
+import { emptyFloorCoverRoom, type FloorCoverRoom, type JoineryItem } from '../types/modules'
 
 const STORAGE_KEY = 'site-office-calcs-v1'
 
@@ -60,6 +60,10 @@ interface JobStore extends JobState, HistorySlice {
   patchFinishes: (patch: Partial<JobState['finishes']>) => void
   patchSkirting: (patch: Partial<JobState['skirting']>) => void
   patchFloorCover: (patch: Partial<JobState['floorCover']>) => void
+  addFloorCoverRoom: (room?: FloorCoverRoom) => void
+  patchFloorCoverRoom: (id: string, patch: Partial<FloorCoverRoom>) => void
+  removeFloorCoverRoom: (id: string) => void
+  setFloorCoverRooms: (rooms: FloorCoverRoom[]) => void
   patchMep: (patch: Partial<JobState['mep']>) => void
   patchPainting: (patch: Partial<JobState['painting']>) => void
   patchExternals: (patch: Partial<JobState['externals']>) => void
@@ -230,6 +234,28 @@ export const useJobStore = create<JobStore>()(
       patchFinishes: (patch) => set((s) => ({ finishes: { ...s.finishes, ...patch } })),
       patchSkirting: (patch) => set((s) => ({ skirting: { ...s.skirting, ...patch } })),
       patchFloorCover: (patch) => set((s) => ({ floorCover: { ...s.floorCover, ...patch } })),
+      addFloorCoverRoom: (room) =>
+        set((s) => ({
+          floorCover: {
+            ...s.floorCover,
+            rooms: [...s.floorCover.rooms, room ?? emptyFloorCoverRoom(`Room ${s.floorCover.rooms.length + 1}`)],
+          },
+        })),
+      patchFloorCoverRoom: (id, patch) =>
+        set((s) => ({
+          floorCover: {
+            ...s.floorCover,
+            rooms: s.floorCover.rooms.map((room) => (room.id === id ? { ...room, ...patch } : room)),
+          },
+        })),
+      removeFloorCoverRoom: (id) =>
+        set((s) => ({
+          floorCover: {
+            ...s.floorCover,
+            rooms: s.floorCover.rooms.filter((room) => room.id !== id),
+          },
+        })),
+      setFloorCoverRooms: (rooms) => set((s) => ({ floorCover: { ...s.floorCover, rooms } })),
       patchMep: (patch) => set((s) => ({ mep: { ...s.mep, ...patch } })),
       patchPainting: (patch) => set((s) => ({ painting: { ...s.painting, ...patch } })),
       patchExternals: (patch) => set((s) => ({ externals: { ...s.externals, ...patch } })),
@@ -281,7 +307,7 @@ export const useJobStore = create<JobStore>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 2,
+      version: 3,
       partialize: (s) => ({
         jobName: s.jobName,
         inputMode: s.inputMode,
@@ -336,11 +362,16 @@ export const useJobStore = create<JobStore>()(
           groundFloor: { ...current.groundFloor, ...p.groundFloor },
           partitions: { ...current.partitions, ...p.partitions },
           firstFloor: { ...current.firstFloor, ...p.firstFloor },
-          stairs: { ...current.stairs, ...p.stairs },
+          stairs: { ...current.stairs, ...p.stairs, widthMm: p.stairs?.widthMm ?? current.stairs.widthMm },
           externalWalls: { ...current.externalWalls, ...p.externalWalls },
           finishes: { ...current.finishes, ...p.finishes },
           skirting: { ...current.skirting, ...p.skirting },
-          floorCover: { ...current.floorCover, ...p.floorCover },
+          floorCover: {
+            ...current.floorCover,
+            ...p.floorCover,
+            mode: p.floorCover?.mode ?? current.floorCover.mode,
+            rooms: p.floorCover?.rooms ?? current.floorCover.rooms,
+          },
           mep: { ...current.mep, ...p.mep },
           painting: { ...current.painting, ...p.painting },
           externals: { ...current.externals, ...p.externals },

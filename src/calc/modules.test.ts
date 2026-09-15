@@ -118,7 +118,18 @@ describe('stairs Part K-style checks', () => {
     const g = boxPlan(8000, 6000)
     const r = calcStairs(g, { ...DEFAULT_STAIRS, goingMm: 150 })
     expect(r.pass).toBe(false)
+    expect(r.passGoing).toBe(false)
+    expect(r.passPitch).toBe(false)
     expect(r.suggestion).toMatch(/quarter-turn|going/i)
+  })
+
+  it('builds a cut list of strings, treads, risers and newels', () => {
+    const g = boxPlan(8000, 6000)
+    const r = calcStairs(g, { ...DEFAULT_STAIRS, goingMm: 225, widthMm: 900 })
+    expect(r.cutList.find((row) => row.item === 'String')?.qty).toBe(2)
+    expect(r.cutList.find((row) => row.item === 'Tread')?.qty).toBe(r.treads)
+    expect(r.cutList.find((row) => row.item === 'Riser')?.qty).toBe(r.risers)
+    expect(r.cutList.find((row) => row.item === 'Tread')?.lengthMm).toBe(900)
   })
 })
 

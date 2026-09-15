@@ -1,5 +1,5 @@
 import { TILE_PRESETS, type CoveringResult } from '../../calc/roofCoverings'
-import { formatM } from '../../calc/units'
+import { formatM, formatM2 } from '../../calc/units'
 import { useJobStore } from '../../store/useJobStore'
 import { NumberField, Panel, SelectField, Stat } from '../ui/Fields'
 
@@ -90,22 +90,55 @@ export function CoveringsPanel({ result }: { result: CoveringResult }) {
         <Stat label="Hip tiles" value={String(result.hipTiles)} />
         <Stat label="Verge" value={formatM(result.vergeM)} />
         <Stat label="Valley" value={formatM(result.valleyM)} />
+        <Stat label="Net cover" value={formatM2(result.netCoverM2)} hint="Main + dormers − rooflights" />
       </div>
 
-      <div className="mt-4 rounded-lg border border-dashed border-line p-3">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Advanced (stubs)</p>
-        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 rounded-lg border border-line p-3">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Dormers, rooflights & snow guards</p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <NumberField
             label="Dormers"
             min={0}
             value={covering.dormers}
+            hint="Gable-front extras"
             onChange={(e) => patchCovering({ dormers: Number(e.target.value) })}
+          />
+          <NumberField
+            label="Dormer width"
+            unit="mm"
+            value={covering.dormerWidthMm}
+            onChange={(e) => patchCovering({ dormerWidthMm: Number(e.target.value) })}
+          />
+          <NumberField
+            label="Cheek height"
+            unit="mm"
+            value={covering.dormerCheekHeightMm}
+            onChange={(e) => patchCovering({ dormerCheekHeightMm: Number(e.target.value) })}
+          />
+          <NumberField
+            label="Roof depth"
+            unit="mm"
+            value={covering.dormerRoofDepthMm}
+            hint="Projection from main slope"
+            onChange={(e) => patchCovering({ dormerRoofDepthMm: Number(e.target.value) })}
           />
           <NumberField
             label="Rooflights"
             min={0}
             value={covering.rooflights}
             onChange={(e) => patchCovering({ rooflights: Number(e.target.value) })}
+          />
+          <NumberField
+            label="Rooflight width"
+            unit="mm"
+            value={covering.rooflightWidthMm}
+            onChange={(e) => patchCovering({ rooflightWidthMm: Number(e.target.value) })}
+          />
+          <NumberField
+            label="Rooflight height"
+            unit="mm"
+            value={covering.rooflightHeightMm}
+            onChange={(e) => patchCovering({ rooflightHeightMm: Number(e.target.value) })}
           />
           <label className="flex items-end gap-2 pb-2 text-sm">
             <input
@@ -116,7 +149,49 @@ export function CoveringsPanel({ result }: { result: CoveringResult }) {
             />
             Snow guards
           </label>
+          {covering.snowGuards ? (
+            <>
+              <NumberField
+                label="Snow-guard rows"
+                min={1}
+                max={3}
+                value={covering.snowGuardRows}
+                hint="Typical 1–2"
+                onChange={(e) => patchCovering({ snowGuardRows: Number(e.target.value) })}
+              />
+              <NumberField
+                label="Snow-guard run"
+                unit="mm"
+                value={covering.snowGuardLengthOverrideMm ?? 0}
+                hint="0 = eaves length"
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  patchCovering({ snowGuardLengthOverrideMm: v > 0 ? v : null })
+                }}
+              />
+            </>
+          ) : null}
         </div>
+        {(covering.dormers > 0 || covering.rooflights > 0 || covering.snowGuards) && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {covering.dormers > 0 ? (
+              <>
+                <Stat label="Dormer roof / cheeks" value={`${formatM2(result.dormerSlopeM2)} / ${formatM2(result.dormerCheekM2)}`} />
+                <Stat label="Dormer valley / verge" value={`${formatM(result.dormerValleyM)} / ${formatM(result.dormerVergeM)}`} />
+              </>
+            ) : null}
+            {covering.rooflights > 0 ? (
+              <Stat
+                label="Rooflight deduct"
+                value={formatM2(result.rooflightDeductM2)}
+                hint={`${result.rooflightFlashings} flashing kit(s)`}
+              />
+            ) : null}
+            {covering.snowGuards ? (
+              <Stat label="Snow guards" value={formatM(result.snowGuardM)} hint={`${result.snowGuardClips} clips`} />
+            ) : null}
+          </div>
+        )}
         <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-ink-soft">
           {result.notes.map((n) => (
             <li key={n}>{n}</li>

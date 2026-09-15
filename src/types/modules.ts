@@ -17,6 +17,7 @@ export type StairPlan = 'straight' | 'quarter-landing' | 'half-landing' | 'dogle
 export type SkirtingMaterial = 'mdf' | 'pine' | 'oak'
 export type SkirtingProfile = 'chamfer' | 'ovolo' | 'torus' | 'ogee' | 'pencil-round'
 export type FloorCoverKind = 'tile' | 'laminate' | 'carpet' | 'vinyl'
+export type FloorCoverMode = 'whole-house' | 'room-by-room'
 export type PipeSystem = 'copper' | 'hep2o'
 export type PaintSubstrate = 'new-plaster' | 'existing-painted' | 'fresh-render'
 export type DriveFinish = 'brick-paving' | 'concrete' | 'tarmac' | 'resin'
@@ -121,6 +122,8 @@ export interface StairsInputs {
   plan: StairPlan
   totalRiseOverrideMm: number | null
   goingMm: number
+  /** Finished stair width between strings, millimetres. Typical 900. */
+  widthMm: number
   stepCountOverride: number | null
   stringThicknessMm: number
   handrail: boolean
@@ -159,6 +162,23 @@ export interface SkirtingInputs {
   wastePct: number
 }
 
+export interface FloorCoverRoom {
+  id: string
+  name: string
+  /** Net floor area to cover, m². */
+  floorM2: number
+  /** Optional wall-tile area before opening deductions, m². 0 = no wall tiling. */
+  wallTileM2: number
+  /** Deduct doors/windows from wall-tile area (not from the floor). */
+  deductOpenings: boolean
+  doorCount: number
+  doorWidthMm: number
+  doorHeightMm: number
+  windowCount: number
+  windowWidthMm: number
+  windowHeightMm: number
+}
+
 export interface FloorCoverInputs {
   kind: FloorCoverKind
   tileLengthMm: number
@@ -167,6 +187,8 @@ export interface FloorCoverInputs {
   wastePct: number
   includeWalls: boolean
   wallHeightMm: number
+  mode: FloorCoverMode
+  rooms: FloorCoverRoom[]
 }
 
 export interface MepInputs {
@@ -296,6 +318,7 @@ export const DEFAULT_STAIRS: StairsInputs = {
   plan: 'straight',
   totalRiseOverrideMm: null,
   goingMm: 225,
+  widthMm: 900,
   stepCountOverride: null,
   stringThicknessMm: 32,
   handrail: true,
@@ -342,6 +365,8 @@ export const DEFAULT_FLOOR_COVER: FloorCoverInputs = {
   wastePct: 10,
   includeWalls: false,
   wallHeightMm: 2000,
+  mode: 'whole-house',
+  rooms: [],
 }
 
 export const DEFAULT_MEP: MepInputs = {
@@ -386,6 +411,25 @@ export const DEFAULT_SCAFFOLD: ScaffoldInputs = {
   hireWeeks: 6,
   liftHeightMm: 2000,
   extraLifts: 0,
+}
+
+export const TYPICAL_FLOOR_ROOMS = ['Hall', 'Lounge', 'Kitchen', 'Bathroom', 'Bedroom 1', 'Bedroom 2'] as const
+
+export function emptyFloorCoverRoom(name = 'Room', floorM2 = 0): FloorCoverRoom {
+  const wet = /bath|ensuite|shower|wc|cloak/i.test(name)
+  return {
+    id: uid(),
+    name,
+    floorM2,
+    wallTileM2: 0,
+    deductOpenings: true,
+    doorCount: 1,
+    doorWidthMm: 826,
+    doorHeightMm: 2040,
+    windowCount: wet ? 1 : 0,
+    windowWidthMm: 600,
+    windowHeightMm: 900,
+  }
 }
 
 export function emptyJoineryItem(kind: JoineryKind, storey: JoineryStorey, code: string): JoineryItem {
