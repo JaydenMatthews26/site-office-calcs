@@ -18,10 +18,18 @@ export interface DerivedGeometry {
   eavesPerimeterMm: number
   doorCount: number
   openingCount: number
+  /** Sum of door leaf areas (width × height), m². */
+  doorAreaM2: number
+  /** Sum of non-door opening areas (windows / holes), m². */
+  windowAreaM2: number
+  openingAreaM2: number
+  /** Storey count from the plan (1–3). Elevations scale with this. */
+  storeys: number
   closedOutline: boolean
   polygon: PointMm[] | null
   storeyHeightMm: number
   wallCount: number
+  source: 'plan' | 'manual'
 }
 
 export function wallLengthMm(wall: Wall): number {
@@ -190,6 +198,11 @@ export function deriveGeometry(plan: Plan): DerivedGeometry {
   const spanMm = Math.min(widthMm, depthMm) || 0
   const lengthMm = Math.max(widthMm, depthMm) || 0
 
+  const doors = openings.filter((o) => o.kind === 'door')
+  const windows = openings.filter((o) => o.kind === 'opening')
+  const doorAreaM2 = doors.reduce((acc, o) => acc + (o.widthMm * o.heightMm) / 1e6, 0)
+  const windowAreaM2 = windows.reduce((acc, o) => acc + (o.widthMm * o.heightMm) / 1e6, 0)
+
   return {
     externalLengthMm,
     partitionLengthMm,
@@ -201,12 +214,17 @@ export function deriveGeometry(plan: Plan): DerivedGeometry {
     spanMm,
     lengthMm,
     eavesPerimeterMm: externalLengthMm,
-    doorCount: openings.filter((o) => o.kind === 'door').length,
-    openingCount: openings.filter((o) => o.kind === 'opening').length,
+    doorCount: doors.length,
+    openingCount: windows.length,
+    doorAreaM2,
+    windowAreaM2,
+    openingAreaM2: doorAreaM2 + windowAreaM2,
+    storeys: Math.max(1, plan.storeys || 1),
     closedOutline,
     polygon,
     storeyHeightMm,
     wallCount: walls.length,
+    source: 'plan',
   }
 }
 

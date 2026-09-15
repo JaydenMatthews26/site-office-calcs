@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { SECTIONS } from '../../sections/registry'
 import { useJobStore } from '../../store/useJobStore'
+import { JobInputModeToggle } from './JobInputModeToggle'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const jobName = useJobStore((s) => s.jobName)
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="mt-2 text-xs leading-relaxed text-white/65">
             Independent of My Site Office. Plans and figures stay on this device.
           </p>
+          <JobInputModeToggle variant="sidebar" />
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-3" aria-label="Calculator sections">
           {SECTIONS.map((section) => {
@@ -69,8 +71,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print flex flex-wrap items-center gap-3 border-b border-line bg-card px-5 py-3">
-          <label className="flex min-w-[220px] flex-1 flex-col gap-1">
+        <header className="no-print flex flex-wrap items-end gap-3 border-b border-line bg-card px-5 py-3">
+          <label className="flex min-w-[200px] flex-1 flex-col gap-1">
             <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Job name</span>
             <input
               value={jobName}
@@ -78,9 +80,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               className="touch-target rounded-md border border-line bg-paper px-3 text-sm font-medium outline-none focus:border-accent"
             />
           </label>
-          <p className="max-w-md text-xs leading-relaxed text-ink-soft">
-            Draw once on the plan. Roofing (and every later section) reads wall lengths, areas and openings
-            from that geometry.
+          <JobInputModeToggle variant="header" />
+          <p className="max-w-sm pb-1 text-xs leading-relaxed text-ink-soft">
+            One take-off model. Every calculator reads span, length, footprint, eaves and openings from it.
           </p>
           <button
             type="button"
@@ -89,7 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 resetJob()
               }
             }}
-            className="touch-target rounded-md border border-line px-3 text-sm text-ink-soft hover:border-accent hover:text-accent"
+            className="touch-target rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft hover:border-accent hover:text-accent"
           >
             Reset job
           </button>

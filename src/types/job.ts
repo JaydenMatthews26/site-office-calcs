@@ -1,3 +1,54 @@
+import {
+  DEFAULT_EXTERNAL_WALLS,
+  DEFAULT_EXTERNALS,
+  DEFAULT_FINISHES,
+  DEFAULT_FIRST_FLOOR,
+  DEFAULT_FLOOR_COVER,
+  DEFAULT_FOUNDATIONS,
+  DEFAULT_GROUND_FLOOR,
+  DEFAULT_JOINERY,
+  DEFAULT_MEP,
+  DEFAULT_PAINTING,
+  DEFAULT_PARTITIONS,
+  DEFAULT_SCAFFOLD,
+  DEFAULT_SKIRTING,
+  DEFAULT_STAIRS,
+  DEFAULT_STRUCTURE,
+  type ExternalWallInputs,
+  type ExternalsInputs,
+  type FinishesInputs,
+  type FirstFloorInputs,
+  type FloorCoverInputs,
+  type FoundationsInputs,
+  type GroundFloorInputs,
+  type JoineryInputs,
+  type MepInputs,
+  type PaintingInputs,
+  type PartitionInputs,
+  type ScaffoldInputs,
+  type SkirtingInputs,
+  type StairsInputs,
+  type StructureInputs,
+} from './modules'
+
+export type {
+  ExternalWallInputs,
+  ExternalsInputs,
+  FinishesInputs,
+  FirstFloorInputs,
+  FloorCoverInputs,
+  FoundationsInputs,
+  GroundFloorInputs,
+  JoineryInputs,
+  MepInputs,
+  PaintingInputs,
+  PartitionInputs,
+  ScaffoldInputs,
+  SkirtingInputs,
+  StairsInputs,
+  StructureInputs,
+} from './modules'
+
 export type WallKind = 'external' | 'partition'
 export type OpeningKind = 'door' | 'opening'
 export type DrawTool =
@@ -14,6 +65,25 @@ export type CoveringType = 'tile' | 'slate'
 export type FeltStyle = 'bitumen' | 'breathable'
 export type CarpentryMode = 'cut' | 'truss'
 export type TrussType = 'fink' | 'attic' | 'mono-pitch' | 'scissor' | 'raised-tie'
+export type FasciaMaterial = 'pvcu' | 'timber'
+export type GutterMaterial = 'plastic' | 'metal' | 'aluminium' | 'copper'
+export type InputMode = 'draw' | 'manual'
+
+export interface ManualTakeoff {
+  spanMm: number
+  lengthMm: number
+  footprintM2: number
+  externalLengthMm: number
+  partitionLengthMm: number
+  storeyHeightMm: number
+  storeys: number
+  doorCount: number
+  openingCount: number
+  doorWidthMm: number
+  doorHeightMm: number
+  windowWidthMm: number
+  windowHeightMm: number
+}
 
 export interface PointMm {
   x: number
@@ -46,6 +116,8 @@ export interface Plan {
   openings: Opening[]
   /** Floor-to-ceiling, used for later ceiling take-offs. Default 2400 mm. */
   storeyHeightMm: number
+  /** Number of occupied storeys (elevations and first-floor take-off). */
+  storeys: number
 }
 
 export interface CoveringInputs {
@@ -84,10 +156,73 @@ export interface RoofingInputs {
   cutListOptIn: boolean
 }
 
+export interface FasciasInputs {
+  material: FasciaMaterial
+  /**
+   * Override eaves run used for fascia, soffit and (on gables) gutter, millimetres.
+   * null = derived from plan / roof shape.
+   */
+  eavesRunOverrideMm: number | null
+  /** Finished fascia board depth (the painted face), millimetres. Typical 175 mm. */
+  fasciaDepthMm: number
+  /** Soffit width override (mm). null = roofing eaves overhang. */
+  soffitWidthOverrideMm: number | null
+  /** Cover width of one soffit board as sold, millimetres (typically 300 mm). */
+  soffitBoardWidthMm: number
+  /** Board length as sold, metres. PVCU ~5.0 m, timber PAR ~5.1 m. */
+  boardLengthM: number
+  /** Cutting / joint waste on fascia, soffit and barge boards, percent. */
+  wastePct: number
+  includeBargeboards: boolean
+  /** Stock PVCU colour (ignored for timber — timber uses paintColour). */
+  pvcuColour: string
+  /** Hex paint colour for timber fascia/soffit/barge. */
+  paintColour: string
+  /** Manufacturer coverage, m² per litre (one coat). Typical exterior wood ~12 m²/L. */
+  paintCoverageM2PerL: number
+  paintCoats: number
+  /** Tin size, litres. Typical 2.5 L. */
+  paintTinL: number
+  gutterMaterial: GutterMaterial
+  /** Street-front / eaves elevation width. null = longer plan dimension. */
+  propertyWidthOverrideMm: number | null
+  /** Gutter height above ground / drain. null = plan storey height. */
+  eavesHeightOverrideMm: number | null
+  /** Downpipe count. null = derived from roof shape and ~50 m² per outlet. */
+  outletsOverride: number | null
+  /** Offset elbows. null = 2 × outlets. */
+  elbowsOverride: number | null
+  /** Downpipe length per outlet, mm. null = eaves height. */
+  downpipeLengthOverrideMm: number | null
+  /** Override total gutter run, mm. null = eaves run (gable: 2 × property width). */
+  gutterRunOverrideMm: number | null
+  gutterPieceLengthM: number
+  downpipePieceLengthM: number
+  gutterBracketCentresMm: number
+}
+
 export interface JobState {
   jobName: string
+  inputMode: InputMode
+  manual: ManualTakeoff
   plan: Plan
   roofing: RoofingInputs
+  fascias: FasciasInputs
+  structure: StructureInputs
+  joinery: JoineryInputs
+  foundations: FoundationsInputs
+  groundFloor: GroundFloorInputs
+  partitions: PartitionInputs
+  firstFloor: FirstFloorInputs
+  stairs: StairsInputs
+  externalWalls: ExternalWallInputs
+  finishes: FinishesInputs
+  skirting: SkirtingInputs
+  floorCover: FloorCoverInputs
+  mep: MepInputs
+  painting: PaintingInputs
+  externals: ExternalsInputs
+  scaffold: ScaffoldInputs
   activeSectionId: string
   /**
    * Per-section include flags for PDF / later whole-job print.
@@ -130,19 +265,81 @@ export const DEFAULT_ROOFING: RoofingInputs = {
   cutListOptIn: false,
 }
 
+export const DEFAULT_FASCIAS: FasciasInputs = {
+  material: 'pvcu',
+  eavesRunOverrideMm: null,
+  fasciaDepthMm: 175,
+  soffitWidthOverrideMm: null,
+  soffitBoardWidthMm: 300,
+  boardLengthM: 5,
+  wastePct: 10,
+  includeBargeboards: true,
+  pvcuColour: 'white',
+  paintColour: '#f4f1e8',
+  paintCoverageM2PerL: 12,
+  paintCoats: 2,
+  paintTinL: 2.5,
+  gutterMaterial: 'plastic',
+  propertyWidthOverrideMm: null,
+  eavesHeightOverrideMm: null,
+  outletsOverride: null,
+  elbowsOverride: null,
+  downpipeLengthOverrideMm: null,
+  gutterRunOverrideMm: null,
+  gutterPieceLengthM: 4,
+  downpipePieceLengthM: 4,
+  gutterBracketCentresMm: 800,
+}
+
 export const DEFAULT_PLAN: Plan = {
   walls: [],
   openings: [],
   storeyHeightMm: 2400,
+  storeys: 1,
+}
+
+export const DEFAULT_MANUAL: ManualTakeoff = {
+  spanMm: 0,
+  lengthMm: 0,
+  footprintM2: 0,
+  externalLengthMm: 0,
+  partitionLengthMm: 0,
+  storeyHeightMm: 2400,
+  storeys: 1,
+  doorCount: 0,
+  openingCount: 0,
+  doorWidthMm: 826,
+  doorHeightMm: 2040,
+  windowWidthMm: 1200,
+  windowHeightMm: 1200,
 }
 
 export const DEFAULT_JOB: JobState = {
   jobName: 'Untitled job',
+  inputMode: 'draw',
+  manual: DEFAULT_MANUAL,
   plan: DEFAULT_PLAN,
   roofing: DEFAULT_ROOFING,
+  fascias: DEFAULT_FASCIAS,
+  structure: DEFAULT_STRUCTURE,
+  joinery: DEFAULT_JOINERY,
+  foundations: DEFAULT_FOUNDATIONS,
+  groundFloor: DEFAULT_GROUND_FLOOR,
+  partitions: DEFAULT_PARTITIONS,
+  firstFloor: DEFAULT_FIRST_FLOOR,
+  stairs: DEFAULT_STAIRS,
+  externalWalls: DEFAULT_EXTERNAL_WALLS,
+  finishes: DEFAULT_FINISHES,
+  skirting: DEFAULT_SKIRTING,
+  floorCover: DEFAULT_FLOOR_COVER,
+  mep: DEFAULT_MEP,
+  painting: DEFAULT_PAINTING,
+  externals: DEFAULT_EXTERNALS,
+  scaffold: DEFAULT_SCAFFOLD,
   activeSectionId: 'plan',
   sectionEnabled: {
     roofing: true,
+    fascias: true,
   },
 }
 

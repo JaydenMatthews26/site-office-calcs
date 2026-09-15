@@ -32,6 +32,10 @@ export function PlanToolbar({
   const redo = useJobStore((s) => s.redo)
   const past = useJobStore((s) => s.past)
   const future = useJobStore((s) => s.future)
+  const storeys = useJobStore((s) => s.plan.storeys)
+  const setStoreys = useJobStore((s) => s.setStoreys)
+  const storeyHeightMm = useJobStore((s) => s.plan.storeyHeightMm)
+  const setStoreyHeight = useJobStore((s) => s.setStoreyHeight)
 
   return (
     <div className="no-print flex flex-wrap items-center gap-2 border-b border-line bg-card px-4 py-2">
@@ -110,6 +114,29 @@ export function PlanToolbar({
       >
         Clear plan
       </button>
+      <label className="ml-2 flex items-center gap-1 text-xs text-ink-soft">
+        Storeys
+        <input
+          type="number"
+          min={1}
+          max={3}
+          value={storeys}
+          onChange={(e) => setStoreys(Number(e.target.value))}
+          className="touch-target w-16 rounded-md border border-line bg-paper px-2 text-sm"
+        />
+      </label>
+      <label className="flex items-center gap-1 text-xs text-ink-soft">
+        Height
+        <input
+          type="number"
+          min={2100}
+          step={50}
+          value={storeyHeightMm}
+          onChange={(e) => setStoreyHeight(Number(e.target.value))}
+          className="touch-target w-20 rounded-md border border-line bg-paper px-2 text-sm"
+        />
+        mm
+      </label>
     </div>
   )
 }

@@ -18,7 +18,7 @@ export function StubSection({ sectionId }: { sectionId: string }) {
         read wall lengths, footprint, ceiling area and opening counts from the floor plan — no double entry.
       </p>
       <p className="mt-3 text-sm text-ink-soft">
-        POC scope is floor plan + roofing only. Other sections are listed in the README roadmap.
+        POC scope now includes the full take-off list from plan through scaffolding.
       </p>
       <div className="mt-6 flex gap-2">
         <button

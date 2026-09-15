@@ -53,6 +53,20 @@ export function formatM2(m2: number, digits = 2): string {
   return `${m2.toFixed(digits)} m²`
 }
 
+export function formatM3(m3: number, digits = 2): string {
+  if (!Number.isFinite(m3)) return '—'
+  return `${m3.toFixed(digits)} m³`
+}
+
+export function ceilDiv(value: number, size: number): number {
+  if (size <= 0 || value <= 0) return 0
+  return Math.ceil(value / size)
+}
+
+export function withWaste(value: number, wastePct: number): number {
+  return value * (1 + Math.max(0, wastePct) / 100)
+}
+
 export function formatGBP(value: number): string {
   if (!Number.isFinite(value)) return '—'
   return new Intl.NumberFormat('en-GB', {
