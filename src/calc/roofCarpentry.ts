@@ -143,9 +143,10 @@ export function calcCutRoof(geometry: DerivedGeometry, roofing: RoofingInputs): 
   const wallPlateSection = '47 × 100 C16 wall plate'
 
   const jackCommonDifferenceMm = Math.cos(θ) > 0 ? spacing / Math.cos(θ) : 0
-  const jacksPerSet = Math.max(0, Math.floor(dims.spanMm / 2 / spacing) - 1)
   // Gable: 0 hip sets; gable-hip: 4 sets (2 hips × 2 surfaces); hip-hip: 8 sets.
   const jackSets = dims.shape === 'hip-hip' ? 8 : dims.shape === 'gable-hip' ? 4 : 0
+  const jacksPerSet =
+    jackSets === 0 ? 0 : Math.max(0, Math.floor(dims.spanMm / 2 / spacing) - 1)
   const jackRafters: JackRafter[] = []
   for (let i = 1; i <= jacksPerSet; i++) {
     const lengthMm = Math.max(0, commonRafterLengthMm - i * jackCommonDifferenceMm)

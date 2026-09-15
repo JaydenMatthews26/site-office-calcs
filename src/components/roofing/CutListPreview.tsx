@@ -53,7 +53,7 @@ export function CutListPreview({ cut, jobName }: { cut: CutRoofResult; jobName: 
         </svg>
 
         <p className="mt-2 text-xs font-medium uppercase tracking-wider text-ink-soft">Jack rafters</p>
-        {cut.jackRafters.length === 0 ? (
+        {cut.jackCount === 0 ? (
           <p className="text-sm text-ink-soft">No jacks on a gable-to-gable roof.</p>
         ) : (
           <svg

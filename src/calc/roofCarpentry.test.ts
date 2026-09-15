@@ -45,6 +45,13 @@ describe('cut roof carpentry', () => {
     }
     expect(cut.jackCount).toBe(cut.jackRafters.length * 8)
   })
+
+  it('does not list jack rafters on a gable-to-gable roof', () => {
+    const g = boxPlan(8000, 6000)
+    const cut = calcCutRoof(g, { ...DEFAULT_ROOFING, roofShape: 'gable-gable' })
+    expect(cut.jackCount).toBe(0)
+    expect(cut.jackRafters).toEqual([])
+  })
 })
 
 describe('truss roof', () => {

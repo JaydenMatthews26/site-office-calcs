@@ -198,7 +198,7 @@ function drawRafterDiagram(doc: jsPDF, y: number, cut: CutRoofResult): number {
     doc.text(`${jack.lengthMm.toFixed(0)} mm`, x0 + w + 3, yy + 1)
     yy += 5
   }
-  if (cut.jackRafters.length === 0) {
+  if (cut.jackCount === 0) {
     doc.text('No jacks on a gable-to-gable roof.', x0, yy)
     yy += 5
   } else {
