@@ -1,4 +1,5 @@
 import type { DrawTool } from '../../types/job'
+import { DEFAULT_OUTER_SKIN } from '../../types/job'
 import { useJobStore } from '../../store/useJobStore'
 
 const TOOLS: { id: DrawTool; label: string; short: string; hint: string }[] = [
@@ -6,7 +7,7 @@ const TOOLS: { id: DrawTool; label: string; short: string; hint: string }[] = [
   { id: 'pan', label: 'Pan', short: 'Pan', hint: 'Drag the sheet' },
   { id: 'rect', label: 'Rectangle', short: 'Rect', hint: 'Drag a building outline' },
   { id: 'external', label: 'External wall', short: 'Wall', hint: 'Drag; snaps square' },
-  { id: 'partition', label: 'Partition', short: 'Part.', hint: 'Internal wall' },
+  { id: 'partition', label: 'Partition', short: 'Part.', hint: 'Internal wall — snaps to walls, no crossing' },
   { id: 'door', label: 'Doorway', short: 'Door', hint: 'Tap a wall' },
   { id: 'opening', label: 'Opening', short: 'Open', hint: 'Window / hole' },
 ]
@@ -36,6 +37,8 @@ export function PlanToolbar({
   const setStoreys = useJobStore((s) => s.setStoreys)
   const storeyHeightMm = useJobStore((s) => s.plan.storeyHeightMm)
   const setStoreyHeight = useJobStore((s) => s.setStoreyHeight)
+  const outerSkin = useJobStore((s) => s.plan.outerSkin ?? DEFAULT_OUTER_SKIN)
+  const setOuterSkin = useJobStore((s) => s.setOuterSkin)
 
   return (
     <div className="no-print flex flex-col gap-1.5 border-b border-line bg-card px-3 py-1.5 md:px-4 md:py-2 lg:flex-row lg:items-center lg:flex-wrap">
@@ -82,6 +85,38 @@ export function PlanToolbar({
         >
           Redo
         </button>
+        <button
+          type="button"
+          onClick={() => setOuterSkin({ enabled: !outerSkin.enabled })}
+          aria-pressed={outerSkin.enabled}
+          title="Offset an outer masonry skin outside the drawn inner/loadbearing line, across the cavity"
+          className={`touch-target shrink-0 rounded-md px-3 text-sm ${
+            outerSkin.enabled
+              ? 'bg-ink text-paper ring-2 ring-accent ring-offset-1 ring-offset-card'
+              : 'border border-line hover:border-accent'
+          }`}
+        >
+          <span className="sm:hidden">{outerSkin.enabled ? 'Clear skin' : 'Skin'}</span>
+          <span className="hidden sm:inline">
+            {outerSkin.enabled ? 'Clear external skin' : 'Add external skin'}
+          </span>
+        </button>
+        {outerSkin.enabled ? (
+          <label className="flex shrink-0 items-center gap-2 text-xs text-ink-soft">
+            Cavity
+            <input
+              type="number"
+              min={50}
+              max={200}
+              step={5}
+              inputMode="numeric"
+              value={outerSkin.cavityMm}
+              onChange={(e) => setOuterSkin({ cavityMm: Number(e.target.value) })}
+              className="touch-target w-16 rounded-md border border-line bg-paper px-2 text-base"
+            />
+            mm
+          </label>
+        ) : null}
         {selectedWallId ? (
           <button
             type="button"

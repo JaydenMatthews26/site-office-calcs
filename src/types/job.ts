@@ -111,6 +111,34 @@ export interface Opening {
   heightMm: number
 }
 
+/**
+ * Typical UK masonry cavity wall (NHBC / Part L take-off build-up):
+ *   inner / loadbearing leaf  100 mm block  — the drawn external line
+ *   cavity                    100 mm air / partial-fill / full-fill insulation (editable)
+ *   outer skin                102 mm brick (102.5 mm unit, rounded)
+ * Total ≈ 300 mm, matching EXTERNAL_THICKNESS_MM.
+ */
+export const UK_INNER_LEAF_MM = 100
+export const UK_CAVITY_MM = 100
+export const UK_OUTER_LEAF_MM = 102
+
+export interface PlanOuterSkin {
+  enabled: boolean
+  /** Air / insulation cavity between inner leaf and outer skin, millimetres. */
+  cavityMm: number
+  /** Inner / loadbearing leaf thickness (drawn external centreline), millimetres. */
+  innerLeafMm: number
+  /** Outer skin thickness, millimetres. */
+  outerLeafMm: number
+}
+
+export const DEFAULT_OUTER_SKIN: PlanOuterSkin = {
+  enabled: false,
+  cavityMm: UK_CAVITY_MM,
+  innerLeafMm: UK_INNER_LEAF_MM,
+  outerLeafMm: UK_OUTER_LEAF_MM,
+}
+
 export interface Plan {
   walls: Wall[]
   openings: Opening[]
@@ -118,6 +146,12 @@ export interface Plan {
   storeyHeightMm: number
   /** Number of occupied storeys (elevations and first-floor take-off). */
   storeys: number
+  /**
+   * Optional outer masonry skin, offset outside the drawn inner/loadbearing
+   * line across `outerSkin.cavityMm`. Visual + thickness for structure calcs;
+   * eaves / footprint still read the inner centreline.
+   */
+  outerSkin: PlanOuterSkin
 }
 
 export interface CoveringInputs {
@@ -316,6 +350,7 @@ export const DEFAULT_PLAN: Plan = {
   openings: [],
   storeyHeightMm: 2400,
   storeys: 1,
+  outerSkin: DEFAULT_OUTER_SKIN,
 }
 
 export const DEFAULT_MANUAL: ManualTakeoff = {

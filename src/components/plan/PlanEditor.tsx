@@ -1,11 +1,24 @@
 import Konva from 'konva'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from 'react-konva'
-import { mmToPx, snapMm, MM_PER_PX } from '../../calc/units'
+import { hypot, mmToPx, parseLengthMm, snapMm, MM_PER_PX } from '../../calc/units'
 import { nearestWall, wallLengthMm } from '../../geometry/derive'
 import { uid } from '../../geometry/ids'
+import { outerSkinOffsetMm, outerSkinPolylines } from '../../geometry/offset'
+import {
+  applyTypedLength,
+  constrainEndpointMove,
+  directionOffWall,
+  lengthOrigin,
+  MIN_WALL_LEN_MM,
+  preparePartition,
+  snapStart,
+} from '../../geometry/planEdit'
+import { resolveNonCrossingSegment } from '../../geometry/segments'
+import { orthoFrom, snapKindActive, type SnapHit } from '../../geometry/snap'
 import { useJobStore } from '../../store/useJobStore'
 import {
+  DEFAULT_OUTER_SKIN,
   DOOR_HEIGHT_MM,
   DOOR_WIDTH_MM,
   EXTERNAL_THICKNESS_MM,
@@ -17,6 +30,7 @@ import {
   type PointMm,
   type Wall,
 } from '../../types/job'
+import { LengthEntry, LiveMeasureLabel } from './LengthHud'
 
 interface Props {
   tool: DrawTool
@@ -31,6 +45,12 @@ interface Draft {
   wallKind?: Wall['kind']
   a: PointMm
   b: PointMm
+  snap?: SnapHit | null
+  clamped?: boolean
+  blocked?: boolean
+  attached?: boolean
+  awaitingLength?: boolean
+  dir?: PointMm
 }
 
 function capturePointer(evt: PointerEvent) {
@@ -48,13 +68,17 @@ function applyDraft(d: Draft) {
   const { plan, addWall, replaceWalls } = useJobStore.getState()
   const walls = plan.walls
   const openings = plan.openings
+  const skin = plan.outerSkin ?? DEFAULT_OUTER_SKIN
+  const externalThickness = skin.enabled
+    ? skin.innerLeafMm + skin.cavityMm + skin.outerLeafMm
+    : EXTERNAL_THICKNESS_MM
   if (d.kind === 'rect') {
     const x = Math.min(d.a.x, d.b.x)
     const y = Math.min(d.a.y, d.b.y)
     const w = Math.abs(d.b.x - d.a.x)
     const h = Math.abs(d.b.y - d.a.y)
     if (w < 1000 || h < 1000) return
-    const t = EXTERNAL_THICKNESS_MM
+    const t = externalThickness
     const rectWalls: Wall[] = [
       { id: uid(), kind: 'external', x1: x, y1: y, x2: x + w, y2: y, thicknessMm: t },
       { id: uid(), kind: 'external', x1: x + w, y1: y, x2: x + w, y2: y + h, thicknessMm: t },
@@ -71,19 +95,32 @@ function applyDraft(d: Draft) {
     return
   }
   const { a, b, wallKind } = d
-  let x2 = b.x
-  let y2 = b.y
-  if (Math.abs(b.x - a.x) >= Math.abs(b.y - a.y)) y2 = a.y
-  else x2 = a.x
-  if (Math.hypot(x2 - a.x, y2 - a.y) < 300) return
+  if (wallKind === 'partition') {
+    const prepared = preparePartition(a, b, walls)
+    if (prepared.blocked || prepared.lengthMm < MIN_WALL_LEN_MM) return
+    addWall({
+      id: uid(),
+      kind: 'partition',
+      x1: prepared.a.x,
+      y1: prepared.a.y,
+      x2: prepared.b.x,
+      y2: prepared.b.y,
+      thicknessMm: PARTITION_THICKNESS_MM,
+    })
+    return
+  }
+  const ortho = orthoFrom(a, b)
+  const end = { x: snapMm(ortho.x), y: snapMm(ortho.y) }
+  const resolved = resolveNonCrossingSegment(a, end, walls)
+  if (resolved.blocked || hypot(resolved.end.x - a.x, resolved.end.y - a.y) < MIN_WALL_LEN_MM) return
   addWall({
     id: uid(),
     kind: wallKind ?? 'external',
     x1: a.x,
     y1: a.y,
-    x2,
-    y2,
-    thicknessMm: wallKind === 'partition' ? PARTITION_THICKNESS_MM : EXTERNAL_THICKNESS_MM,
+    x2: resolved.end.x,
+    y2: resolved.end.y,
+    thicknessMm: externalThickness,
   })
 }
 
@@ -100,20 +137,39 @@ export function PlanEditor({
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 48, y: 48 })
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [lengthText, setLengthText] = useState('')
+  const [lengthFrom, setLengthFrom] = useState<'a' | 'b'>('a')
+  const [lengthInvalid, setLengthInvalid] = useState(false)
+  const [dragSnap, setDragSnap] = useState<SnapHit | null>(null)
   const draftRef = useRef<Draft | null>(null)
   const pinchRef = useRef<{ dist: number } | null>(null)
   const pointersRef = useRef(new Set<number>())
   const zoomRef = useRef(zoom)
   const panRef = useRef(pan)
+  const touchRef = useRef(false)
 
   const walls = useJobStore((s) => s.plan.walls)
   const openings = useJobStore((s) => s.plan.openings)
+  const outerSkin = useJobStore((s) => s.plan.outerSkin ?? DEFAULT_OUTER_SKIN)
   const updateWall = useJobStore((s) => s.updateWall)
   const addOpening = useJobStore((s) => s.addOpening)
+  const addWall = useJobStore((s) => s.addWall)
+
+  const selectedWall = selectedWallId ? (walls.find((w) => w.id === selectedWallId) ?? null) : null
 
   draftRef.current = draft
   zoomRef.current = zoom
   panRef.current = pan
+
+  useEffect(() => {
+    if (!selectedWallId) return
+    const all = useJobStore.getState().plan.walls
+    const w = all.find((wall) => wall.id === selectedWallId)
+    if (!w || w.kind !== 'partition') return
+    setLengthFrom(lengthOrigin(w, all))
+    setLengthText(String(Math.round(wallLengthMm(w))))
+    setLengthInvalid(false)
+  }, [selectedWallId])
 
   useEffect(() => {
     const el = containerRef.current
@@ -188,8 +244,51 @@ export function PlanEditor({
     const complete = (e: PointerEvent) => {
       pointersRef.current.delete(e.pointerId)
       if (pinchRef.current) return
+      if (e.target instanceof HTMLElement && e.target.closest('[data-plan-hud]')) return
       const d = draftRef.current
       if (!d) return
+      if (d.awaitingLength) return
+      if (d.kind === 'wall' && d.wallKind === 'partition') {
+        const prepared = preparePartition(d.a, d.b, useJobStore.getState().plan.walls, {
+          touch: touchRef.current,
+        })
+        if (prepared.blocked) {
+          draftRef.current = null
+          setDraft(null)
+          return
+        }
+        if (prepared.lengthMm < MIN_WALL_LEN_MM) {
+          if (prepared.attached || d.attached) {
+            const dir =
+              prepared.lengthMm >= 50
+                ? prepared.dir
+                : prepared.attached
+                  ? directionOffWall(d.a, prepared.attached, useJobStore.getState().plan.walls)
+                  : (d.dir ?? { x: 1, y: 0 })
+            const next: Draft = {
+              ...d,
+              b: d.a,
+              awaitingLength: true,
+              attached: true,
+              dir,
+              blocked: false,
+              clamped: false,
+            }
+            draftRef.current = next
+            setDraft(next)
+            setLengthText('')
+            setLengthInvalid(false)
+            return
+          }
+          draftRef.current = null
+          setDraft(null)
+          return
+        }
+        draftRef.current = null
+        setDraft(null)
+        applyDraft({ ...d, a: prepared.a, b: prepared.b })
+        return
+      }
       draftRef.current = null
       setDraft(null)
       applyDraft(d)
@@ -226,12 +325,18 @@ export function PlanEditor({
     return () => window.removeEventListener('keydown', onKey)
   }, [onSelectOpening, onSelectWall, selectedOpeningId, selectedWallId])
 
-  const pointerMm = (): PointMm | null => {
+  const rawPointerMm = (): PointMm | null => {
     const stage = stageRef.current
     if (!stage) return null
     const p = stage.getRelativePointerPosition()
     if (!p) return null
-    return { x: snapMm(p.x * MM_PER_PX), y: snapMm(p.y * MM_PER_PX) }
+    return { x: p.x * MM_PER_PX, y: p.y * MM_PER_PX }
+  }
+
+  const pointerMm = (): PointMm | null => {
+    const raw = rawPointerMm()
+    if (!raw) return null
+    return { x: snapMm(raw.x), y: snapMm(raw.y) }
   }
 
   const onWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -273,6 +378,7 @@ export function PlanEditor({
     const evt = e.evt
     evt.preventDefault()
     if (typeof evt.pointerId === 'number') pointersRef.current.add(evt.pointerId)
+    touchRef.current = evt.pointerType === 'touch'
     if (pinchRef.current || pointersRef.current.size > 1 || evt.isPrimary === false) {
       draftRef.current = null
       setDraft(null)
@@ -280,8 +386,9 @@ export function PlanEditor({
     }
     if (tool === 'pan') return
     const isStage = e.target === e.target.getStage()
+    const raw = rawPointerMm()
     const pt = pointerMm()
-    if (!pt) return
+    if (!raw || !pt) return
     if (tool === 'select') {
       if (isStage) {
         onSelectWall(null)
@@ -301,7 +408,41 @@ export function PlanEditor({
       return
     }
     if (tool === 'external' || tool === 'partition') {
-      const next = { kind: 'wall' as const, wallKind: tool, a: pt, b: pt }
+      const current = draftRef.current
+      if (tool === 'partition' && current?.awaitingLength && current.kind === 'wall') {
+        const prepared = preparePartition(current.a, raw, walls, { touch: touchRef.current })
+        const next: Draft = {
+          ...current,
+          awaitingLength: false,
+          b: prepared.b,
+          snap: prepared.snap,
+          clamped: prepared.clamped,
+          blocked: prepared.blocked,
+          dir: prepared.dir,
+        }
+        draftRef.current = next
+        setDraft(next)
+        capturePointer(evt)
+        return
+      }
+      if (tool === 'partition') {
+        const start = snapStart(raw, walls, touchRef.current)
+        const dir = start.attached ? directionOffWall(start.point, start.attached, walls) : { x: 1, y: 0 }
+        const next: Draft = {
+          kind: 'wall',
+          wallKind: 'partition',
+          a: start.point,
+          b: start.point,
+          snap: start.snap,
+          attached: Boolean(start.attached),
+          dir,
+        }
+        draftRef.current = next
+        setDraft(next)
+        capturePointer(evt)
+        return
+      }
+      const next: Draft = { kind: 'wall', wallKind: 'external', a: pt, b: pt }
       draftRef.current = next
       setDraft(next)
       capturePointer(evt)
@@ -310,9 +451,40 @@ export function PlanEditor({
 
   const onMove = () => {
     if (pinchRef.current || !draftRef.current) return
+    const d = draftRef.current
+    if (d.awaitingLength) return
+    const raw = rawPointerMm()
     const pt = pointerMm()
-    if (!pt) return
-    const next = { ...draftRef.current, b: pt }
+    if (!raw || !pt) return
+    if (d.kind === 'wall' && d.wallKind === 'partition') {
+      const prepared = preparePartition(d.a, raw, walls, { touch: touchRef.current })
+      const next: Draft = prepared.blocked
+        ? { ...d, blocked: true, snap: prepared.snap }
+        : {
+            ...d,
+            b: prepared.b,
+            snap: prepared.snap,
+            clamped: prepared.clamped,
+            blocked: false,
+            attached: Boolean(prepared.attached) || d.attached,
+            dir: prepared.dir,
+          }
+      draftRef.current = next
+      setDraft(next)
+      return
+    }
+    if (d.kind === 'wall') {
+      const ortho = orthoFrom(d.a, pt)
+      const end = { x: snapMm(ortho.x), y: snapMm(ortho.y) }
+      const resolved = resolveNonCrossingSegment(d.a, end, walls)
+      const next: Draft = resolved.blocked
+        ? { ...d, blocked: true }
+        : { ...d, b: resolved.end, clamped: resolved.clamped, blocked: false }
+      draftRef.current = next
+      setDraft(next)
+      return
+    }
+    const next = { ...d, b: pt }
     draftRef.current = next
     setDraft(next)
   }
@@ -320,6 +492,79 @@ export function PlanEditor({
   const onUp = (e: Konva.KonvaEventObject<PointerEvent>) => {
     if (typeof e.evt.pointerId === 'number') pointersRef.current.delete(e.evt.pointerId)
   }
+
+  const applyLengthValue = (raw: string, origin: PointMm, dir: PointMm, ignoreIds: ReadonlySet<string>) => {
+    const mm = parseLengthMm(raw)
+    if (mm === null || mm < MIN_WALL_LEN_MM) {
+      setLengthInvalid(true)
+      return null
+    }
+    const prepared = applyTypedLength(origin, dir, mm, walls, ignoreIds)
+    if (prepared.blocked) {
+      setLengthInvalid(true)
+      return null
+    }
+    setLengthInvalid(false)
+    return prepared
+  }
+
+  const commitTypedPartition = () => {
+    const d = draftRef.current
+    if (!d || d.kind !== 'wall' || d.wallKind !== 'partition') return
+    const dir = d.dir ?? { x: 1, y: 0 }
+    const prepared = applyLengthValue(lengthText, d.a, dir, new Set())
+    if (!prepared) return
+    addWall({
+      id: uid(),
+      kind: 'partition',
+      x1: prepared.a.x,
+      y1: prepared.a.y,
+      x2: prepared.b.x,
+      y2: prepared.b.y,
+      thicknessMm: PARTITION_THICKNESS_MM,
+    })
+    draftRef.current = null
+    setDraft(null)
+    setLengthText('')
+  }
+
+  const commitSelectedLength = () => {
+    if (!selectedWall || selectedWall.kind !== 'partition') return
+    const origin =
+      lengthFrom === 'a'
+        ? { x: selectedWall.x1, y: selectedWall.y1 }
+        : { x: selectedWall.x2, y: selectedWall.y2 }
+    const other =
+      lengthFrom === 'a'
+        ? { x: selectedWall.x2, y: selectedWall.y2 }
+        : { x: selectedWall.x1, y: selectedWall.y1 }
+    const dir = { x: other.x - origin.x, y: other.y - origin.y }
+    const prepared = applyLengthValue(lengthText, origin, dir, new Set([selectedWall.id]))
+    if (!prepared) return
+    if (lengthFrom === 'a') updateWall(selectedWall.id, { x2: prepared.b.x, y2: prepared.b.y }, true)
+    else updateWall(selectedWall.id, { x1: prepared.b.x, y1: prepared.b.y }, true)
+    setLengthText('')
+  }
+
+  const skinLoops = useMemo(() => {
+    if (!outerSkin.enabled) return []
+    const dist = outerSkinOffsetMm(outerSkin.innerLeafMm, outerSkin.cavityMm, outerSkin.outerLeafMm)
+    return outerSkinPolylines(walls, dist)
+  }, [outerSkin, walls])
+
+  const liveSnap = draft?.snap && snapKindActive(draft.snap.kind) ? draft.snap : dragSnap
+  const draftLen = draft && draft.kind === 'wall' ? hypot(draft.b.x - draft.a.x, draft.b.y - draft.a.y) : 0
+  const hudPt = draft && draft.kind === 'wall' ? draft.b : null
+  const hudScreen = hudPt
+    ? {
+        left: Math.min(size.w - 140, Math.max(8, pan.x + mmToPx(hudPt.x) * zoom + 14)),
+        top: Math.min(size.h - 72, Math.max(8, pan.y + mmToPx(hudPt.y) * zoom + 14)),
+      }
+    : null
+
+  const showLengthEntry =
+    (draft?.kind === 'wall' && draft.wallKind === 'partition' && draft.awaitingLength) ||
+    (tool === 'select' && selectedWall?.kind === 'partition')
 
   const grid = useMemo(() => gridLines(40_000, 30_000, 1000), [])
 
@@ -377,6 +622,18 @@ export function PlanEditor({
           ))}
           <Line points={[0, 0, mmToPx(2000), 0]} stroke="#c45c26" strokeWidth={3} />
           <Text text="2 m" x={4} y={6} fontSize={12 / zoom} fill="#9a4318" fontFamily="IBM Plex Mono" />
+          {skinLoops.map((loop, i) => (
+            <Line
+              key={`skin-${i}`}
+              points={loop.flatMap((p) => [mmToPx(p.x), mmToPx(p.y)])}
+              closed={loop.length > 2}
+              stroke="#9a4318"
+              strokeWidth={5}
+              dash={[10, 7]}
+              opacity={0.85}
+              lineJoin="miter"
+            />
+          ))}
         </Layer>
         <Layer>
           {walls.map((wall) => (
@@ -391,10 +648,17 @@ export function PlanEditor({
                 onSelectOpening(null)
                 onSelectWall(wall.id)
               }}
-              onDragEnd={(which, pt) => {
-                if (which === 'a') updateWall(wall.id, { x1: pt.x, y1: pt.y })
-                else updateWall(wall.id, { x2: pt.x, y2: pt.y })
+              onDrag={(which, pt) => {
+                const prepared = constrainEndpointMove(wall, which, pt, walls, touchRef.current)
+                setDragSnap(prepared.snap && snapKindActive(prepared.snap.kind) ? prepared.snap : null)
+                if (prepared.blocked || prepared.lengthMm < MIN_WALL_LEN_MM) {
+                  return { point: which === 'a' ? { x: wall.x1, y: wall.y1 } : { x: wall.x2, y: wall.y2 } }
+                }
+                if (which === 'a') updateWall(wall.id, { x1: prepared.b.x, y1: prepared.b.y })
+                else updateWall(wall.id, { x2: prepared.b.x, y2: prepared.b.y })
+                return { point: prepared.b }
               }}
+              onDragEnd={() => setDragSnap(null)}
               onSelectOpening={(id) => {
                 onSelectWall(null)
                 onSelectOpening(id)
@@ -403,8 +667,79 @@ export function PlanEditor({
             />
           ))}
           {draft ? <DraftShape draft={draft} /> : null}
+          {liveSnap && snapKindActive(liveSnap.kind) ? (
+            <Circle
+              x={mmToPx(liveSnap.point.x)}
+              y={mmToPx(liveSnap.point.y)}
+              radius={Math.max(7, 10 / zoom)}
+              stroke="#fff"
+              strokeWidth={2}
+              fill={liveSnap.kind === 'endpoint' ? '#c45c26' : 'transparent'}
+              listening={false}
+            />
+          ) : null}
         </Layer>
       </Stage>
+      {draft?.kind === 'wall' && draft.wallKind === 'partition' && !draft.awaitingLength && hudScreen ? (
+        <LiveMeasureLabel
+          left={hudScreen.left}
+          top={hudScreen.top}
+          lengthMm={draftLen}
+          invalid={draft.blocked}
+          clamped={draft.clamped}
+        />
+      ) : null}
+      {showLengthEntry ? (
+        <div
+          className="no-print absolute z-10"
+          style={{
+            left: 12,
+            bottom: 'max(3.25rem, calc(env(safe-area-inset-bottom) + 2.5rem))',
+          }}
+        >
+          <LengthEntry
+            title={draft?.awaitingLength ? 'Partition length' : 'Wall length'}
+            lengthMm={
+              draft?.awaitingLength
+                ? 0
+                : selectedWall
+                  ? wallLengthMm(selectedWall)
+                  : draftLen
+            }
+            value={lengthText}
+            onChange={(v) => {
+              setLengthText(v)
+              setLengthInvalid(false)
+            }}
+            onApply={draft?.awaitingLength ? commitTypedPartition : commitSelectedLength}
+            onFlip={
+              draft?.awaitingLength
+                ? () => {
+                    const d = draftRef.current
+                    if (!d?.dir) return
+                    const next = { ...d, dir: { x: -d.dir.x, y: -d.dir.y } }
+                    draftRef.current = next
+                    setDraft(next)
+                  }
+                : selectedWall?.kind === 'partition'
+                  ? () => setLengthFrom((from) => (from === 'a' ? 'b' : 'a'))
+                  : undefined
+            }
+            invalid={lengthInvalid}
+            autoFocus={Boolean(draft?.awaitingLength)}
+            hint={
+              draft?.awaitingLength
+                ? 'Length from the attached wall. mm or m (UK). Enter applies.'
+                : 'Grows away from the attached end. Flip swaps the origin. mm or m.'
+            }
+          />
+        </div>
+      ) : null}
+      {outerSkin.enabled ? (
+        <div className="no-print pointer-events-none absolute right-3 top-14 hidden rounded bg-accent-dark/90 px-2 py-1 font-mono text-[10px] text-paper md:block">
+          Outer skin · {outerSkin.cavityMm} mm cavity
+        </div>
+      ) : null}
       <div
         className="no-print pointer-events-none absolute left-3 hidden rounded bg-ink/80 px-2 py-1 font-mono text-[11px] text-paper md:block"
         style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
@@ -456,16 +791,14 @@ function DraftShape({ draft }: { draft: Draft }) {
     const h = mmToPx(Math.abs(draft.b.y - draft.a.y))
     return <Rect x={x} y={y} width={w} height={h} stroke="#c45c26" dash={[8, 6]} strokeWidth={2} />
   }
-  let x2 = draft.b.x
-  let y2 = draft.b.y
-  if (Math.abs(draft.b.x - draft.a.x) >= Math.abs(draft.b.y - draft.a.y)) y2 = draft.a.y
-  else x2 = draft.a.x
+  const stroke = draft.blocked ? '#b42318' : draft.clamped ? '#c45c26' : '#c45c26'
   return (
     <Line
-      points={[mmToPx(draft.a.x), mmToPx(draft.a.y), mmToPx(x2), mmToPx(y2)]}
-      stroke="#c45c26"
+      points={[mmToPx(draft.a.x), mmToPx(draft.a.y), mmToPx(draft.b.x), mmToPx(draft.b.y)]}
+      stroke={stroke}
       strokeWidth={4}
       dash={[8, 6]}
+      opacity={draft.blocked ? 0.85 : 1}
     />
   )
 }
@@ -477,6 +810,7 @@ function WallShape({
   zoom,
   selectable,
   onSelect,
+  onDrag,
   onDragEnd,
   onSelectOpening,
   selectedOpeningId,
@@ -487,7 +821,8 @@ function WallShape({
   zoom: number
   selectable: boolean
   onSelect: () => void
-  onDragEnd: (which: 'a' | 'b', pt: PointMm) => void
+  onDrag: (which: 'a' | 'b', pt: PointMm) => { point: PointMm }
+  onDragEnd: () => void
   onSelectOpening: (id: string) => void
   selectedOpeningId: string | null
 }) {
@@ -539,13 +874,15 @@ function WallShape({
             x={wall.x1}
             y={wall.y1}
             zoom={zoom}
-            onDrag={(pt) => onDragEnd('a', pt)}
+            onDrag={(pt) => onDrag('a', pt)}
+            onDragEnd={onDragEnd}
           />
           <Anchor
             x={wall.x2}
             y={wall.y2}
             zoom={zoom}
-            onDrag={(pt) => onDragEnd('b', pt)}
+            onDrag={(pt) => onDrag('b', pt)}
+            onDragEnd={onDragEnd}
           />
         </>
       ) : null}
@@ -610,11 +947,13 @@ function Anchor({
   y,
   zoom,
   onDrag,
+  onDragEnd,
 }: {
   x: number
   y: number
   zoom: number
-  onDrag: (pt: PointMm) => void
+  onDrag: (pt: PointMm) => { point: PointMm }
+  onDragEnd: () => void
 }) {
   return (
     <Circle
@@ -626,10 +965,11 @@ function Anchor({
       strokeWidth={2}
       draggable
       onDragMove={(e) => {
-        const pt = { x: snapMm(e.target.x() * MM_PER_PX), y: snapMm(e.target.y() * MM_PER_PX) }
-        e.target.position({ x: mmToPx(pt.x), y: mmToPx(pt.y) })
-        onDrag(pt)
+        const raw = { x: e.target.x() * MM_PER_PX, y: e.target.y() * MM_PER_PX }
+        const next = onDrag(raw)
+        e.target.position({ x: mmToPx(next.point.x), y: mmToPx(next.point.y) })
       }}
+      onDragEnd={onDragEnd}
     />
   )
 }
