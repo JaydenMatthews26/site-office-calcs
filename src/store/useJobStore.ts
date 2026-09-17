@@ -7,6 +7,8 @@ import { SECTIONS } from '../sections/registry'
 import {
   DEFAULT_JOB,
   DEFAULT_PLAN,
+  DEFAULT_OUTER_SKIN,
+  EXTERNAL_THICKNESS_MM,
   type FasciasInputs,
   type InputMode,
   type JobState,
@@ -14,6 +16,7 @@ import {
   type ManualTakeoff,
   type Opening,
   type Plan,
+  type PlanOuterSkin,
   type RoofingInputs,
   type Wall,
 } from '../types/job'
@@ -36,8 +39,9 @@ interface JobStore extends JobState, HistorySlice {
   setPlan: (plan: Plan) => void
   replaceWalls: (walls: Wall[], openings?: Opening[]) => void
   addWall: (wall: Wall) => void
-  updateWall: (id: string, patch: Partial<Wall>) => void
+  updateWall: (id: string, patch: Partial<Wall>, recordHistory?: boolean) => void
   deleteWall: (id: string) => void
+  setOuterSkin: (patch: Partial<PlanOuterSkin>) => void
   addOpening: (opening: Opening) => void
   deleteOpening: (id: string) => void
   setStoreyHeight: (mm: number) => void
@@ -158,13 +162,39 @@ export const useJobStore = create<JobStore>()(
           future: [],
         })),
 
-      updateWall: (id, patch) =>
+      updateWall: (id, patch, recordHistory = false) =>
         set((s) => ({
           plan: {
             ...s.plan,
             walls: s.plan.walls.map((w) => (w.id === id ? { ...w, ...patch } : w)),
           },
+          past: recordHistory ? pushPlan(s.past, s.plan) : s.past,
+          future: recordHistory ? [] : s.future,
         })),
+
+      setOuterSkin: (patch) =>
+        set((s) => {
+          const prev = s.plan.outerSkin ?? DEFAULT_OUTER_SKIN
+          const outerSkin = { ...prev, ...patch }
+          const thickness = outerSkin.enabled
+            ? outerSkin.innerLeafMm + outerSkin.cavityMm + outerSkin.outerLeafMm
+            : EXTERNAL_THICKNESS_MM
+          const walls = s.plan.walls.map((w) =>
+            w.kind === 'external' ? { ...w, thicknessMm: thickness } : w,
+          )
+          const enabledToggled = prev.enabled !== outerSkin.enabled
+          return {
+            plan: { ...s.plan, outerSkin, walls },
+            past: enabledToggled ? pushPlan(s.past, s.plan) : s.past,
+            future: enabledToggled ? [] : s.future,
+            structure: {
+              ...s.structure,
+              cavityMm: outerSkin.cavityMm,
+              outerSkinEnabled: outerSkin.enabled ? true : s.structure.outerSkinEnabled,
+            },
+            externalWalls: { ...s.externalWalls, cavityMm: outerSkin.cavityMm },
+          }
+        }),
 
       deleteWall: (id) =>
         set((s) => ({
@@ -263,11 +293,20 @@ export const useJobStore = create<JobStore>()(
 
       insertSampleBuilding: () => {
         const { walls, openings } = rectangularBuilding(8000, 6000)
-        set((s) => ({
-          plan: { ...s.plan, walls, openings },
-          past: pushPlan(s.past, s.plan),
-          future: [],
-        }))
+        set((s) => {
+          const skin = s.plan.outerSkin ?? DEFAULT_OUTER_SKIN
+          const t = skin.enabled
+            ? skin.innerLeafMm + skin.cavityMm + skin.outerLeafMm
+            : EXTERNAL_THICKNESS_MM
+          const nextWalls = walls.map((w) =>
+            w.kind === 'external' ? { ...w, thicknessMm: t } : w,
+          )
+          return {
+            plan: { ...s.plan, walls: nextWalls, openings },
+            past: pushPlan(s.past, s.plan),
+            future: [],
+          }
+        })
       },
 
       clearPlan: () =>
@@ -276,6 +315,7 @@ export const useJobStore = create<JobStore>()(
             ...DEFAULT_PLAN,
             storeyHeightMm: s.plan.storeyHeightMm,
             storeys: s.plan.storeys,
+            outerSkin: s.plan.outerSkin ?? DEFAULT_OUTER_SKIN,
           },
           past: pushPlan(s.past, s.plan),
           future: [],
@@ -307,7 +347,7 @@ export const useJobStore = create<JobStore>()(
     }),
     {
       name: STORAGE_KEY,
-      version: 3,
+      version: 4,
       partialize: (s) => ({
         jobName: s.jobName,
         inputMode: s.inputMode,
@@ -344,7 +384,11 @@ export const useJobStore = create<JobStore>()(
         return {
           ...current,
           ...p,
-          plan: { ...current.plan, ...p.plan },
+          plan: {
+            ...current.plan,
+            ...p.plan,
+            outerSkin: { ...current.plan.outerSkin, ...p.plan?.outerSkin },
+          },
           manual: { ...current.manual, ...p.manual },
           roofing: {
             ...current.roofing,

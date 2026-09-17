@@ -23,6 +23,40 @@ export function snapMm(value: number, stepMm = 100): number {
   return Math.round(value / stepMm) * stepMm
 }
 
+/**
+ * Parse a typed UK site length into millimetres.
+ * Accepts "2400", "2400mm", "2.4", "2.4m" (spaces optional).
+ * Bare values < 50 are treated as metres (so 2.4 → 2400 mm, 8 → 8 m);
+ * bare values ≥ 50 are millimetres (900 → 900 mm).
+ */
+export function parseLengthMm(raw: string): number | null {
+  const s = raw.trim().toLowerCase().replace(/\s+/g, '')
+  if (!s) return null
+  if (s.endsWith('mm')) {
+    const n = Number(s.slice(0, -2))
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
+  if (s.endsWith('m')) {
+    const n = Number(s.slice(0, -1))
+    return Number.isFinite(n) && n > 0 ? n * MM_PER_METRE : null
+  }
+  const n = Number(s)
+  if (!Number.isFinite(n) || n <= 0) return null
+  if (n < 50) return n * MM_PER_METRE
+  return n
+}
+
+/** Live HUD: metres as the primary site figure, millimetres underneath. */
+export function formatLengthHud(mm: number): { metres: string; millimetres: string } {
+  if (!Number.isFinite(mm) || mm <= 0) {
+    return { metres: '0 m', millimetres: '0 mm' }
+  }
+  return {
+    metres: `${(mm / MM_PER_METRE).toFixed(2)} m`,
+    millimetres: `${Math.round(mm)} mm`,
+  }
+}
+
 export function degToRad(deg: number): number {
   return (deg * Math.PI) / 180
 }

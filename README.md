@@ -32,6 +32,13 @@ Then open the URL Vite prints (usually `http://localhost:5173`).
 
 On a phone, open **Menu** for calculators (drawer overlay). The plan canvas is full-width so you can draw with a finger; **Manual** types sizes if you would rather skip the canvas.
 
+### Plan drawing tools
+
+- **Partitions** snap to existing wall ends, crossings and faces. A ring marks the snap. Drag still works with a finger; pinch-zoom is unchanged.
+- **Length** — Select an internal wall (or tap a wall with Partition, then type) and enter millimetres or metres (`2400`, `2.4m`). Apply / Enter grows the segment *away from* the attached end (Flip reverses). While dragging a partition, a small HUD shows live length in m and mm.
+- **No crossing** — Internal lines will not cross another internal or an external wall; the draft turns red if a move would overlap, and otherwise stops at the first wall (T-junction).
+- **Add external skin** — Parallel offset of the drawn external (inner/loadbearing) line. Default UK build-up: 100 mm inner block + **100 mm cavity** (air / insulation, editable 50–200 mm) + 102 mm brick outer. Footprint and eaves stay on the inner centreline; cavity width is copied into Structure and External walls.
+
 ## Job input mode
 
 **Job input** at the top of the app (and the sidebar) chooses how the job starts:
@@ -43,7 +50,7 @@ Both modes write the same take-off model. Calculators never care which mode prod
 
 ## What this app does
 
-1. **Floor plan editor (Konva)** — rectangular building, external walls, partitions, doorways and openings (40 px = 1 m, snap 100 mm).
+1. **Floor plan editor (Konva)** — rectangular building, external walls, partitions, doorways and openings (40 px = 1 m, snap 100 mm). Internal partitions snap to wall endpoints, intersections and faces (mouse and touch) with a snap marker; type a length in mm or m from a selected internal wall or after tapping one; a live metre/mm HUD follows the cursor while drawing; internals cannot cross other internals or the external outline (they clamp to a T-junction). **Add external skin** draws the outer masonry leaf outside the inner/loadbearing line across a UK cavity (default 100 mm, editable) and writes that cavity into structure / external-wall take-offs without changing eaves or footprint.
 2. **Roofing — coverings + carpentry** (cut / truss) plus opt-in cut list. Dormers, rooflights and snow guards have sizes that change tiles, battens, felt, valleys and clips.
 3. **Fascias, soffits & guttering** — PVCU or timber (timber paint + tins). Guttering materials and downpipes.
 4. **Building structure** — masonry or timber frame; skins unlock materials; block outer → render; steel-brick hybrid flags an SE.
