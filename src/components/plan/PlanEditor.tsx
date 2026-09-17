@@ -9,7 +9,6 @@ import {
   applyTypedLength,
   constrainEndpointMove,
   directionOffWall,
-  lengthOrigin,
   MIN_WALL_LEN_MM,
   preparePartition,
   snapStart,
@@ -138,7 +137,6 @@ export function PlanEditor({
   const [pan, setPan] = useState({ x: 48, y: 48 })
   const [draft, setDraft] = useState<Draft | null>(null)
   const [lengthText, setLengthText] = useState('')
-  const [lengthFrom, setLengthFrom] = useState<'a' | 'b'>('a')
   const [lengthInvalid, setLengthInvalid] = useState(false)
   const [dragSnap, setDragSnap] = useState<SnapHit | null>(null)
   const draftRef = useRef<Draft | null>(null)
@@ -155,21 +153,9 @@ export function PlanEditor({
   const addOpening = useJobStore((s) => s.addOpening)
   const addWall = useJobStore((s) => s.addWall)
 
-  const selectedWall = selectedWallId ? (walls.find((w) => w.id === selectedWallId) ?? null) : null
-
   draftRef.current = draft
   zoomRef.current = zoom
   panRef.current = pan
-
-  useEffect(() => {
-    if (!selectedWallId) return
-    const all = useJobStore.getState().plan.walls
-    const w = all.find((wall) => wall.id === selectedWallId)
-    if (!w || w.kind !== 'partition') return
-    setLengthFrom(lengthOrigin(w, all))
-    setLengthText(String(Math.round(wallLengthMm(w))))
-    setLengthInvalid(false)
-  }, [selectedWallId])
 
   useEffect(() => {
     const el = containerRef.current
@@ -390,6 +376,12 @@ export function PlanEditor({
     const pt = pointerMm()
     if (!raw || !pt) return
     if (tool === 'select') {
+      const name = typeof e.target.name === 'function' ? e.target.name() : ''
+      if (name.startsWith('wall-')) {
+        onSelectOpening(null)
+        onSelectWall(name.slice('wall-'.length))
+        return
+      }
       if (isStage) {
         onSelectWall(null)
         onSelectOpening(null)
@@ -528,24 +520,6 @@ export function PlanEditor({
     setLengthText('')
   }
 
-  const commitSelectedLength = () => {
-    if (!selectedWall || selectedWall.kind !== 'partition') return
-    const origin =
-      lengthFrom === 'a'
-        ? { x: selectedWall.x1, y: selectedWall.y1 }
-        : { x: selectedWall.x2, y: selectedWall.y2 }
-    const other =
-      lengthFrom === 'a'
-        ? { x: selectedWall.x2, y: selectedWall.y2 }
-        : { x: selectedWall.x1, y: selectedWall.y1 }
-    const dir = { x: other.x - origin.x, y: other.y - origin.y }
-    const prepared = applyLengthValue(lengthText, origin, dir, new Set([selectedWall.id]))
-    if (!prepared) return
-    if (lengthFrom === 'a') updateWall(selectedWall.id, { x2: prepared.b.x, y2: prepared.b.y }, true)
-    else updateWall(selectedWall.id, { x1: prepared.b.x, y1: prepared.b.y }, true)
-    setLengthText('')
-  }
-
   const skinLoops = useMemo(() => {
     if (!outerSkin.enabled) return []
     const dist = outerSkinOffsetMm(outerSkin.innerLeafMm, outerSkin.cavityMm, outerSkin.outerLeafMm)
@@ -562,9 +536,7 @@ export function PlanEditor({
       }
     : null
 
-  const showLengthEntry =
-    (draft?.kind === 'wall' && draft.wallKind === 'partition' && draft.awaitingLength) ||
-    (tool === 'select' && selectedWall?.kind === 'partition')
+  const showLengthEntry = Boolean(draft?.kind === 'wall' && draft.wallKind === 'partition' && draft.awaitingLength)
 
   const grid = useMemo(() => gridLines(40_000, 30_000, 1000), [])
 
@@ -694,44 +666,28 @@ export function PlanEditor({
           className="no-print absolute z-10"
           style={{
             left: 12,
-            bottom: 'max(3.25rem, calc(env(safe-area-inset-bottom) + 2.5rem))',
+            top: 12,
           }}
         >
           <LengthEntry
-            title={draft?.awaitingLength ? 'Partition length' : 'Wall length'}
-            lengthMm={
-              draft?.awaitingLength
-                ? 0
-                : selectedWall
-                  ? wallLengthMm(selectedWall)
-                  : draftLen
-            }
+            title="Partition length"
+            lengthMm={0}
             value={lengthText}
             onChange={(v) => {
               setLengthText(v)
               setLengthInvalid(false)
             }}
-            onApply={draft?.awaitingLength ? commitTypedPartition : commitSelectedLength}
-            onFlip={
-              draft?.awaitingLength
-                ? () => {
-                    const d = draftRef.current
-                    if (!d?.dir) return
-                    const next = { ...d, dir: { x: -d.dir.x, y: -d.dir.y } }
-                    draftRef.current = next
-                    setDraft(next)
-                  }
-                : selectedWall?.kind === 'partition'
-                  ? () => setLengthFrom((from) => (from === 'a' ? 'b' : 'a'))
-                  : undefined
-            }
+            onApply={commitTypedPartition}
+            onFlip={() => {
+              const d = draftRef.current
+              if (!d?.dir) return
+              const next = { ...d, dir: { x: -d.dir.x, y: -d.dir.y } }
+              draftRef.current = next
+              setDraft(next)
+            }}
             invalid={lengthInvalid}
-            autoFocus={Boolean(draft?.awaitingLength)}
-            hint={
-              draft?.awaitingLength
-                ? 'Length from the attached wall. mm or m (UK). Enter applies.'
-                : 'Grows away from the attached end. Flip swaps the origin. mm or m.'
-            }
+            autoFocus
+            hint="Length from the attached wall. mm or m (UK). Enter applies."
           />
         </div>
       ) : null}
@@ -839,11 +795,20 @@ function WallShape({
       {segs.map((seg, i) => (
         <Line
           key={i}
+          name={`wall-${wall.id}`}
           points={[mmToPx(seg.x1), mmToPx(seg.y1), mmToPx(seg.x2), mmToPx(seg.y2)]}
           stroke={selected ? '#c45c26' : stroke}
           strokeWidth={width}
           lineCap="square"
           hitStrokeWidth={Math.max(28, 36 / zoom)}
+          onPointerDown={
+            selectable
+              ? (e) => {
+                  e.cancelBubble = true
+                  onSelect()
+                }
+              : undefined
+          }
           onClick={selectable ? onSelect : undefined}
           onTap={selectable ? onSelect : undefined}
         />
