@@ -3,6 +3,10 @@ import type { InputMode, ManualTakeoff, Plan } from '../types/job'
 import { deriveGeometry } from './derive'
 import { DOOR_HEIGHT_MM, DOOR_WIDTH_MM, OPENING_HEIGHT_MM, OPENING_WIDTH_MM } from '../types/job'
 
+export function manualHasSizes(m: ManualTakeoff): boolean {
+  return m.spanMm > 0 || m.lengthMm > 0 || m.footprintM2 > 0 || m.externalLengthMm > 0
+}
+
 export function manualFromGeometry(g: DerivedGeometry, plan: Plan): ManualTakeoff {
   return {
     spanMm: g.spanMm,
@@ -71,4 +75,26 @@ export function typicalFootprintM2(spanMm: number, lengthMm: number): number {
 /** Suggest a rectangular perimeter from span × length (two eaves + two gables). */
 export function typicalPerimeterMm(spanMm: number, lengthMm: number): number {
   return 2 * (spanMm + lengthMm)
+}
+
+/**
+ * Update span/length and refresh footprint and perimeter when they still match the
+ * previous rectangle (or are still zero). A hand-typed override is left alone.
+ */
+export function suggestRectangle(
+  manual: { spanMm: number; lengthMm: number; footprintM2: number; externalLengthMm: number },
+  spanMm: number,
+  lengthMm: number,
+) {
+  const prevFoot = typicalFootprintM2(manual.spanMm, manual.lengthMm)
+  const prevPer = typicalPerimeterMm(manual.spanMm, manual.lengthMm)
+  const footprintM2 =
+    manual.footprintM2 === prevFoot || manual.footprintM2 === 0
+      ? typicalFootprintM2(spanMm, lengthMm)
+      : manual.footprintM2
+  const externalLengthMm =
+    manual.externalLengthMm === prevPer || manual.externalLengthMm === 0
+      ? typicalPerimeterMm(spanMm, lengthMm)
+      : manual.externalLengthMm
+  return { spanMm, lengthMm, footprintM2, externalLengthMm }
 }

@@ -3,6 +3,7 @@ import type { JoineryItem } from '../types/modules'
 import type { ExternalWallInputs } from '../types/modules'
 import { elevationAreas } from './structure'
 import { ceilDiv, mmToM, withWaste } from './units'
+import { describeWallBuildUp, renderApplies, wallBuildUpFromExternal } from './wallBuildUp'
 
 export interface LintelRow {
   code: string
@@ -21,14 +22,19 @@ export interface ExternalWallResult {
   lintels: LintelRow[]
   cavityBarriersM: number
   fireStopsM: number
+  renderM2: number
+  renderM3: number
+  buildUp: string
   notes: string[]
 }
 
 /**
  * External walls above DPC.
  *
- * Cavity + Part L insulation (thickness input, not a U-value). Inner lightweight block,
- * outer brick or block. Openings deducted via elevation net area.
+ * Cavity + Part L insulation (thickness input, not a U-value). Inner skin, outer skin,
+ * cavity and render are the same build-up as Building structure.
+ * Block outer includes render area and volume. Brick outer skips render.
+ * Openings deducted via elevation net area.
  *
  * Lintels: length = opening + 2 × bearing (typically 150 mm each side).
  *   Brick outer → Catnic (steel); block outer → concrete lintel.
@@ -72,12 +78,25 @@ export function calcExternalWalls(
   }
   const fireStopsM = input.fireStops ? mmToM(g.externalLengthMm) * g.storeys : 0
   const insulationM3 = netM2 * mmToM(input.insulationMm)
+  const build = wallBuildUpFromExternal(input)
+  const buildUp = describeWallBuildUp(build)
+  const renderOn = renderApplies(build)
+  const renderM2 = renderOn ? netM2 : 0
+  const renderM3 = renderOn ? netM2 * mmToM(input.renderThicknessMm) : 0
 
   const notes = [
+    `Shared wall build-up: ${buildUp}.`,
     'Catnic / steel lintels for brick outer; concrete lintels + padstones for block outer.',
     'Part L insulation thickness is a take-off input, not a SAP check.',
     'Take-off aid only — confirm lintel load tables and cavity barrier positions on site.',
   ]
+  if (renderOn) {
+    notes.splice(
+      1,
+      0,
+      `${input.renderKind} render at ${input.renderThicknessMm} mm (${renderM3.toFixed(2)} m³) — same outer finish as Building structure.`,
+    )
+  }
   return {
     cavityMm: input.cavityMm,
     insulationM3,
@@ -87,6 +106,9 @@ export function calcExternalWalls(
     lintels,
     cavityBarriersM: input.cavityBarriers ? cavityBarriersM : 0,
     fireStopsM,
+    renderM2,
+    renderM3,
+    buildUp,
     notes,
   }
 }

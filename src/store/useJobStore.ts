@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { deriveGeometry } from '../geometry/derive'
-import { manualFromGeometry } from '../geometry/effective'
+import { manualFromGeometry, manualHasSizes } from '../geometry/effective'
+import {
+  externalPatchFromBuildUp,
+  syncWallBuildUp,
+  wallBuildUpFromStructure,
+} from '../calc/wallBuildUp'
 import { rectangularBuilding } from '../geometry/rect'
 import { SECTIONS } from '../sections/registry'
 import {
@@ -20,6 +25,7 @@ import {
   type RoofingInputs,
   type Wall,
 } from '../types/job'
+import { joineryCodePrefix, nextJoineryCode } from '../calc/joinery'
 import { emptyFloorCoverRoom, type FloorCoverRoom, type JoineryItem } from '../types/modules'
 
 const STORAGE_KEY = 'site-office-calcs-v1'
@@ -29,11 +35,17 @@ interface HistorySlice {
   future: Plan[]
 }
 
+export type InputModePrompt = 'manual-conflict' | 'empty-canvas'
+
 interface JobStore extends JobState, HistorySlice {
+  inputPrompt: InputModePrompt | null
   setJobName: (name: string) => void
   setActiveSection: (id: string) => void
   toggleSection: (id: string, enabled: boolean) => void
-  setInputMode: (mode: InputMode) => boolean
+  /** Switch mode, or raise an inline prompt when typed and drawn sizes would clash. */
+  requestInputMode: (mode: InputMode) => void
+  resolveInputPrompt: (action: 'copy' | 'keep' | 'switch' | 'cancel') => void
+  applyInputMode: (mode: InputMode, copyFromPlan?: boolean) => void
   patchManual: (patch: Partial<ManualTakeoff>) => void
   copyManualFromPlan: () => void
   setPlan: (plan: Plan) => void
@@ -83,9 +95,8 @@ function pushPlan(past: Plan[], plan: Plan): Plan[] {
   return [...past.slice(-29), structuredClone(plan)]
 }
 
-function hasManualData(m: ManualTakeoff): boolean {
-  return m.spanMm > 0 || m.lengthMm > 0 || m.footprintM2 > 0 || m.externalLengthMm > 0
-}
+const STRUCTURE_BUILD_KEYS = ['innerSkin', 'outerSkin', 'cavityMm', 'renderKind', 'renderThicknessMm'] as const
+const EXTERNAL_BUILD_KEYS = ['innerBlock', 'outerSkin', 'cavityMm', 'renderKind', 'renderThicknessMm'] as const
 
 export const useJobStore = create<JobStore>()(
   persist(
@@ -93,55 +104,63 @@ export const useJobStore = create<JobStore>()(
       ...DEFAULT_JOB,
       past: [],
       future: [],
+      inputPrompt: null,
 
       setJobName: (jobName) => set({ jobName }),
       setActiveSection: (activeSectionId) => set({ activeSectionId }),
       toggleSection: (id, enabled) =>
         set({ sectionEnabled: { ...get().sectionEnabled, [id]: enabled } }),
 
-      setInputMode: (mode) => {
+      requestInputMode: (mode) => {
         const { inputMode, plan, manual } = get()
-        if (mode === inputMode) return true
+        if (mode === inputMode) {
+          set({ inputPrompt: null })
+          return
+        }
+        if (mode === 'manual' && plan.walls.length > 0 && manualHasSizes(manual)) {
+          set({ inputPrompt: 'manual-conflict' })
+          return
+        }
+        if (mode === 'draw' && plan.walls.length === 0 && manualHasSizes(manual)) {
+          set({ inputPrompt: 'empty-canvas' })
+          return
+        }
+        get().applyInputMode(mode, mode === 'manual' && plan.walls.length > 0)
+      },
+
+      resolveInputPrompt: (action) => {
+        const prompt = get().inputPrompt
+        if (action === 'cancel' || !prompt) {
+          set({ inputPrompt: null })
+          return
+        }
+        if (prompt === 'manual-conflict') {
+          get().applyInputMode('manual', action === 'copy')
+          return
+        }
+        if (action === 'switch') get().applyInputMode('draw')
+        else set({ inputPrompt: null })
+      },
+
+      applyInputMode: (mode, copyFromPlan = false) => {
+        const { plan, manual } = get()
         if (mode === 'manual') {
-          const fromPlan = plan.walls.length > 0
-          if (fromPlan && hasManualData(manual)) {
-            const copy = window.confirm(
-              'Copy the drawn plan into typed fields? This replaces current manual sizes. Cancel keeps your typed figures. The canvas is not deleted.',
-            )
-            set({
-              inputMode: 'manual',
-              manual: copy ? manualFromGeometry(deriveGeometry(plan), plan) : manual,
-            })
-            return true
-          }
+          const fromPlan = plan.walls.length > 0 && copyFromPlan
           set({
             inputMode: 'manual',
+            inputPrompt: null,
             manual: fromPlan ? manualFromGeometry(deriveGeometry(plan), plan) : manual,
           })
-          return true
+          return
         }
-        const emptyCanvas = plan.walls.length === 0
-        if (emptyCanvas && hasManualData(manual)) {
-          const ok = window.confirm(
-            'Switch to draw plan? The canvas is empty, so calculators will have no geometry until you draw. Typed measurements stay saved if you switch back.',
-          )
-          if (!ok) return false
-        }
-        set({ inputMode: 'draw' })
-        return true
+        set({ inputMode: 'draw', inputPrompt: null })
       },
 
       patchManual: (patch) => set((s) => ({ manual: { ...s.manual, ...patch } })),
 
       copyManualFromPlan: () => {
-        const { plan, manual } = get()
+        const { plan } = get()
         if (plan.walls.length === 0) return
-        if (hasManualData(manual)) {
-          const ok = window.confirm(
-            'Replace typed sizes with the drawn plan? Roof pitch and eaves overhang stay on the roofing section.',
-          )
-          if (!ok) return
-        }
         set({ manual: manualFromGeometry(deriveGeometry(plan), plan) })
       },
 
@@ -238,7 +257,13 @@ export const useJobStore = create<JobStore>()(
           roofing: { ...s.roofing, covering: { ...s.roofing.covering, ...patch } },
         })),
       patchFascias: (patch) => set((s) => ({ fascias: { ...s.fascias, ...patch } })),
-      patchStructure: (patch) => set((s) => ({ structure: { ...s.structure, ...patch } })),
+      patchStructure: (patch) =>
+        set((s) => {
+          const structure = { ...s.structure, ...patch }
+          const shared = STRUCTURE_BUILD_KEYS.some((key) => key in patch)
+          if (!shared) return { structure }
+          return syncWallBuildUp(structure, s.externalWalls, 'structure')
+        }),
       patchJoinery: (patch) => set((s) => ({ joinery: { ...s.joinery, ...patch } })),
       setJoineryItems: (items) => set((s) => ({ joinery: { ...s.joinery, items } })),
       patchJoineryItem: (id, patch) =>
@@ -249,7 +274,15 @@ export const useJobStore = create<JobStore>()(
           },
         })),
       addJoineryItem: (item) =>
-        set((s) => ({ joinery: { ...s.joinery, items: [...s.joinery.items, item] } })),
+        set((s) => ({
+          joinery: {
+            ...s.joinery,
+            items: [
+              ...s.joinery.items,
+              { ...item, code: nextJoineryCode(s.joinery.items, joineryCodePrefix(item)) },
+            ],
+          },
+        })),
       removeJoineryItem: (id) =>
         set((s) => ({
           joinery: { ...s.joinery, items: s.joinery.items.filter((it) => it.id !== id) },
@@ -260,7 +293,12 @@ export const useJobStore = create<JobStore>()(
       patchFirstFloor: (patch) => set((s) => ({ firstFloor: { ...s.firstFloor, ...patch } })),
       patchStairs: (patch) => set((s) => ({ stairs: { ...s.stairs, ...patch } })),
       patchExternalWalls: (patch) =>
-        set((s) => ({ externalWalls: { ...s.externalWalls, ...patch } })),
+        set((s) => {
+          const externalWalls = { ...s.externalWalls, ...patch }
+          const shared = EXTERNAL_BUILD_KEYS.some((key) => key in patch)
+          if (!shared) return { externalWalls }
+          return syncWallBuildUp(s.structure, externalWalls, 'external')
+        }),
       patchFinishes: (patch) => set((s) => ({ finishes: { ...s.finishes, ...patch } })),
       patchSkirting: (patch) => set((s) => ({ skirting: { ...s.skirting, ...patch } })),
       patchFloorCover: (patch) => set((s) => ({ floorCover: { ...s.floorCover, ...patch } })),
@@ -321,7 +359,7 @@ export const useJobStore = create<JobStore>()(
           future: [],
         })),
 
-      resetJob: () => set({ ...DEFAULT_JOB, past: [], future: [] }),
+      resetJob: () => set({ ...DEFAULT_JOB, past: [], future: [], inputPrompt: null }),
 
       undo: () => {
         const { past, plan, future } = get()
@@ -400,16 +438,45 @@ export const useJobStore = create<JobStore>()(
           joinery: {
             ...current.joinery,
             ...p.joinery,
-            items: p.joinery?.items ?? current.joinery.items,
+            items: (p.joinery?.items ?? current.joinery.items).map((it) => ({
+              ...it,
+              doorType: it.doorType === 'external' ? ('external' as const) : ('internal' as const),
+              label: typeof it.label === 'string' ? it.label : '',
+            })),
           },
           foundations: { ...current.foundations, ...p.foundations },
           groundFloor: { ...current.groundFloor, ...p.groundFloor },
-          partitions: { ...current.partitions, ...p.partitions },
+          partitions: {
+            ...current.partitions,
+            ...p.partitions,
+            insulation: p.partitions?.insulation ?? current.partitions.insulation,
+            insulationThicknessMm: p.partitions?.insulationThicknessMm ?? current.partitions.insulationThicknessMm,
+          },
           firstFloor: { ...current.firstFloor, ...p.firstFloor },
           stairs: { ...current.stairs, ...p.stairs, widthMm: p.stairs?.widthMm ?? current.stairs.widthMm },
-          externalWalls: { ...current.externalWalls, ...p.externalWalls },
-          finishes: { ...current.finishes, ...p.finishes },
-          skirting: { ...current.skirting, ...p.skirting },
+          externalWalls: (() => {
+            const structure = { ...current.structure, ...p.structure }
+            const externalWalls = {
+              ...current.externalWalls,
+              ...p.externalWalls,
+              renderKind: p.externalWalls?.renderKind ?? current.externalWalls.renderKind,
+              renderThicknessMm: p.externalWalls?.renderThicknessMm ?? current.externalWalls.renderThicknessMm,
+            }
+            if (p.externalWalls?.renderKind == null) {
+              return { ...externalWalls, ...externalPatchFromBuildUp(wallBuildUpFromStructure(structure)) }
+            }
+            return externalWalls
+          })(),
+          finishes: {
+            ...current.finishes,
+            ...p.finishes,
+            skimFinish: p.finishes?.skimFinish ?? current.finishes.skimFinish,
+          },
+          skirting: {
+            ...current.skirting,
+            ...p.skirting,
+            architraveProfile: p.skirting?.architraveProfile ?? current.skirting.architraveProfile,
+          },
           floorCover: {
             ...current.floorCover,
             ...p.floorCover,

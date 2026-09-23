@@ -5,7 +5,7 @@ import { useGeometry } from '../../hooks/useGeometry'
 import { exportFasciasPdf } from '../../pdf/exportFascias'
 import { useJobStore } from '../../store/useJobStore'
 import { jobState } from '../takeoff/geom'
-import { IncludeToggle, NumberField, Stat } from '../ui/Fields'
+import { IncludeToggle, NumberField, ProvisionalDefaultsNote, Stat } from '../ui/Fields'
 import { FasciaSoffitPanel, GutteringPanel } from './FasciaPanels'
 
 export function FasciasSection() {
@@ -46,6 +46,7 @@ export function FasciasSection() {
             onChange={(v) => useJobStore.getState().toggleSection('fascias', v)}
           />
         </div>
+        <ProvisionalDefaultsNote />
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <NumberField

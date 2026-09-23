@@ -1,12 +1,12 @@
-import { useEffect, useMemo } from 'react'
-import { calcJoinery, syncJoineryFromGeometry } from '../../calc/joinery'
+import { useEffect, useMemo, useState } from 'react'
+import { appendInternalDoors, calcJoinery, nextJoineryCode, syncJoineryFromGeometry } from '../../calc/joinery'
 import { formatM2 } from '../../calc/units'
 import { useGeometry } from '../../hooks/useGeometry'
 import { exportJoineryPdf } from '../../pdf/exportTakeoff'
 import { useJobStore } from '../../store/useJobStore'
-import { emptyJoineryItem, type GlazingKind, type JoineryStorey } from '../../types/modules'
+import { emptyJoineryItem, type DoorType, type GlazingKind, type JoineryStorey } from '../../types/modules'
 import { CalcSection } from '../section/CalcSection'
-import { NumberField, Panel, SelectField, Stat } from '../ui/Fields'
+import { NumberField, Panel, SelectField, Stat, TextField } from '../ui/Fields'
 import { geomBlurb, jobState } from './geom'
 
 function readPhoto(file: File, cb: (url: string) => void) {
@@ -46,6 +46,8 @@ export function JoinerySection() {
     [manual.doorWidthMm, manual.doorHeightMm, manual.windowWidthMm, manual.windowHeightMm],
   )
   const r = useMemo(() => calcJoinery(plan, g, joinery, sizes), [plan, g, joinery, sizes])
+  const [bulkCount, setBulkCount] = useState(4)
+  const [bulkStorey, setBulkStorey] = useState<'gf' | 'ff'>('gf')
 
   useEffect(() => {
     if (joinery.items.length > 0) return
@@ -76,37 +78,67 @@ export function JoinerySection() {
         <button
           type="button"
           className="touch-target rounded-md border border-line px-3 text-sm"
-          onClick={() => addItem(emptyJoineryItem('window', 'gf', `WG${items.length + 1}`))}
+          onClick={() => addItem(emptyJoineryItem('window', 'gf', nextJoineryCode(items, 'WG')))}
         >
           Add GF window
         </button>
         <button
           type="button"
           className="touch-target rounded-md border border-line px-3 text-sm"
-          onClick={() => addItem(emptyJoineryItem('door', 'gf', `FD${items.length + 1}`))}
+          onClick={() => addItem(emptyJoineryItem('door', 'gf', nextJoineryCode(items, 'FD')))}
         >
           Add GF door
         </button>
         <button
           type="button"
           className="touch-target rounded-md border border-line px-3 text-sm"
-          onClick={() => addItem(emptyJoineryItem('window', 'ff', `FW${items.length + 1}`))}
+          onClick={() => addItem(emptyJoineryItem('door', 'ff', nextJoineryCode(items, 'FD')))}
+        >
+          Add FF door
+        </button>
+        <button
+          type="button"
+          className="touch-target rounded-md border border-line px-3 text-sm"
+          onClick={() => addItem(emptyJoineryItem('window', 'ff', nextJoineryCode(items, 'FW')))}
         >
           Add FF window
         </button>
         <button
           type="button"
           className="touch-target rounded-md border border-line px-3 text-sm"
-          onClick={() => addItem(emptyJoineryItem('rooflight', 'roof', `RL${items.length + 1}`))}
+          onClick={() => addItem(emptyJoineryItem('rooflight', 'roof', nextJoineryCode(items, 'RL')))}
         >
           Add rooflight
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-3">
+        <NumberField
+          label="How many"
+          min={1}
+          value={bulkCount}
+          onChange={(e) => setBulkCount(Math.max(1, Number(e.target.value) || 1))}
+        />
+        <SelectField label="Storey" value={bulkStorey} onChange={(e) => setBulkStorey(e.target.value as 'gf' | 'ff')}>
+          <option value="gf">Ground</option>
+          <option value="ff">First</option>
+        </SelectField>
+        <button
+          type="button"
+          className="touch-target rounded-md border border-line px-3 text-sm"
+          onClick={() => setJoineryItems(appendInternalDoors(items, bulkCount, bulkStorey))}
+        >
+          Add {bulkCount} internal 762×2040 doors on {bulkStorey === 'ff' ? 'first' : 'ground'}
+        </button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="GF windows" value={String(r.gfWindows)} />
-        <Stat label="GF doors" value={String(r.gfDoors)} />
         <Stat label="FF windows" value={String(r.ffWindows)} />
+        <Stat label="GF doors" value={String(r.gfDoors)} />
+        <Stat label="FF doors" value={String(r.ffDoors)} />
+        <Stat label="Internal doors" value={String(r.internalDoors)} />
+        <Stat label="External doors" value={String(r.externalDoors)} />
         <Stat label="Rooflights" value={String(r.rooflights)} />
       </div>
 
@@ -114,8 +146,27 @@ export function JoinerySection() {
         <p className="text-sm text-ink-soft">Sync from the plan or add openings. Numbered WG1, FD1, FW1, RL1…</p>
       ) : (
         items.map((it) => (
-          <Panel key={it.id} title={`${it.code} · ${it.kind}`}>
+          <Panel
+            key={it.id}
+            title={`${it.code} · ${it.kind}${it.kind === 'door' ? ` · ${it.doorType}` : ''}${it.label ? ` · ${it.label}` : ''}`}
+          >
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <TextField
+                label="Room / position"
+                value={it.label}
+                placeholder="Optional"
+                onChange={(e) => patchItem(it.id, { label: e.target.value })}
+              />
+              {it.kind === 'door' ? (
+                <SelectField
+                  label="Door type"
+                  value={it.doorType}
+                  onChange={(e) => patchItem(it.id, { doorType: e.target.value as DoorType })}
+                >
+                  <option value="internal">Internal</option>
+                  <option value="external">External</option>
+                </SelectField>
+              ) : null}
               <NumberField
                 label="Width"
                 unit="mm"

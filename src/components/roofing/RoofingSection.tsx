@@ -6,7 +6,7 @@ import { useGeometry } from '../../hooks/useGeometry'
 import { exportRoofingPdf } from '../../pdf/exportRoofing'
 import { useJobStore } from '../../store/useJobStore'
 import { jobState } from '../takeoff/geom'
-import { IncludeToggle, NumberField, Panel, SelectField, Stat } from '../ui/Fields'
+import { IncludeToggle, NumberField, Panel, ProvisionalDefaultsNote, SelectField, Stat } from '../ui/Fields'
 import { CarpentryPanel } from './CarpentryPanel'
 import { CoveringsPanel } from './CoveringsPanel'
 import { CutListPreview } from './CutListPreview'
@@ -44,6 +44,7 @@ export function RoofingSection() {
             onChange={(v) => useJobStore.getState().toggleSection('roofing', v)}
           />
         </div>
+        <ProvisionalDefaultsNote />
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <NumberField

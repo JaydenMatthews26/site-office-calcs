@@ -174,6 +174,39 @@ export function IncludeToggle({
   )
 }
 
+export function ProvisionalDefaultsNote() {
+  return (
+    <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-ink" role="note">
+      Provisional defaults. Materials, sizes and substrate here are assumptions for this take-off — check them
+      against the job before ordering. Not an engineered specification.
+    </p>
+  )
+}
+
+export function InlineConfirm({
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  message: string
+  confirmLabel: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm" role="status">
+      <p className="min-w-[12rem] flex-1 text-ink">{message}</p>
+      <button type="button" className="touch-target rounded-md bg-ink px-3 text-sm font-medium text-paper" onClick={onConfirm}>
+        {confirmLabel}
+      </button>
+      <button type="button" className="touch-target rounded-md border border-line bg-paper px-3 text-sm" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  )
+}
+
 export function Notes({ notes }: { notes: string[] }) {
   if (notes.length === 0) return null
   return (

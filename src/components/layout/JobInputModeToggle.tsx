@@ -12,12 +12,13 @@ export function JobInputModeToggle({
   variant?: 'header' | 'sidebar'
 }) {
   const mode = useJobStore((s) => s.inputMode)
-  const setInputMode = useJobStore((s) => s.setInputMode)
+  const requestInputMode = useJobStore((s) => s.requestInputMode)
   const setActive = useJobStore((s) => s.setActiveSection)
 
   const pick = (next: InputMode) => {
     if (next === mode) return
-    if (setInputMode(next)) setActive('plan')
+    requestInputMode(next)
+    if (useJobStore.getState().inputMode !== mode) setActive('plan')
   }
 
   const track =

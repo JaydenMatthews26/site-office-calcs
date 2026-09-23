@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useJobStore } from '../../store/useJobStore'
-import { IncludeToggle } from '../ui/Fields'
+import { IncludeToggle, ProvisionalDefaultsNote } from '../ui/Fields'
 
 export function CalcSection({
   id,
@@ -36,6 +36,7 @@ export function CalcSection({
             onChange={(v) => toggleSection(id, v)}
           />
         </div>
+        <ProvisionalDefaultsNote />
         <div>
           <button
             type="button"

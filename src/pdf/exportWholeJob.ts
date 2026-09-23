@@ -146,7 +146,7 @@ function appendCalculator(
       return noteList(doc, y + 4, r.notes)
     }
     case 'finishes': {
-      const r = calcFinishes(geometry, job.finishes)
+      const r = calcFinishes(geometry, job.finishes, job.partitions)
       y = drawFinishesTakeoff(doc, y, r)
       return noteList(doc, y + 4, r.notes)
     }
