@@ -7,6 +7,7 @@ import { useJobStore } from '../../store/useJobStore'
 import { CalcSection } from '../section/CalcSection'
 import { CheckField, Notes, NumberField, Panel, SelectField, Stat } from '../ui/Fields'
 import { geomBlurb, jobState } from './geom'
+import { WallBuildUpNotice } from './WallBuildUpNotice'
 
 export function StructureSection() {
   const g = useGeometry()
@@ -25,6 +26,7 @@ export function StructureSection() {
       onExport={() => exportStructurePdf(jobState(), g, r)}
       footer={<Notes notes={r.notes} />}
     >
+      <WallBuildUpNotice />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SelectField
           label="Frame"

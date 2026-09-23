@@ -3,6 +3,13 @@ import type { DerivedGeometry } from '../geometry/derive'
 import type { PartitionInputs } from '../types/modules'
 import { ceilDiv, mmToM, withWaste } from './units'
 
+export const INSULATION_LABEL: Record<PartitionInputs['insulation'], string> = {
+  none: 'None',
+  'mineral-wool': 'Mineral wool',
+  pir: 'PIR',
+  'acoustic-quilt': 'Acoustic quilt',
+}
+
 export function partitionDoorCount(plan: Plan, fallbackDoors: number, source: DerivedGeometry['source']): number {
   if (source === 'manual') return Math.max(0, fallbackDoors)
   const partIds = new Set(plan.walls.filter((w) => w.kind === 'partition').map((w) => w.id))
@@ -20,6 +27,10 @@ export interface PartitionResult {
   doorsOnPartitions: number
   lintels: number
   doubledStuds: number
+  insulation: PartitionInputs['insulation']
+  insulationLabel: string
+  insulationThicknessMm: number
+  insulationM3: number
   notes: string[]
 }
 
@@ -31,6 +42,7 @@ export interface PartitionResult {
  * Blockwork: units = area / ((L+10)×(H+10)).
  * Plasterboard: layers × 2 faces × area / 2.88 m² sheet + 10% waste.
  * Door count from plan doors on partition walls; each → lintel (timber header / block padstone).
+ * Insulation volume = partition area (length × height) × thickness. None → 0.
  */
 export function calcPartitions(
   g: DerivedGeometry,
@@ -60,8 +72,19 @@ export function calcPartitions(
   const pbArea = areaM2 * faces * input.plasterboardLayers * (input.acoustic || input.fireRating ? 1 : 1)
   const plasterboardSheets = ceilDiv(withWaste(pbArea, 10), 2.88)
 
+  const insulationLabel = INSULATION_LABEL[input.insulation]
+  const insulationM3 =
+    input.insulation === 'none' ? 0 : areaM2 * mmToM(Math.max(0, input.insulationThicknessMm))
+
   if (input.acoustic) notes.push('Acoustic lining — consider 15 mm sound-bloc + insulation in the cavity.')
   if (input.fireRating) notes.push('Fire rating opted in — confirm board type and cavity barriers to the required minutes.')
+  if (input.insulation === 'none') {
+    notes.push('No internal-wall insulation selected.')
+  } else {
+    notes.push(
+      `${insulationLabel} ${input.insulationThicknessMm} mm in the partition (${insulationM3.toFixed(2)} m³). Cavity fill on studs, lining on blockwork.`,
+    )
+  }
   notes.push('Door openings on partitions drive lintels and doubled studs / cripples (schedule).')
 
   return {
@@ -75,6 +98,10 @@ export function calcPartitions(
     doorsOnPartitions: partitionDoorCount,
     lintels,
     doubledStuds,
+    insulation: input.insulation,
+    insulationLabel,
+    insulationThicknessMm: input.insulationThicknessMm,
+    insulationM3,
     notes,
   }
 }

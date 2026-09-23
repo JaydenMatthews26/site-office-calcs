@@ -41,35 +41,37 @@ On a phone, open **Menu** for calculators (drawer overlay). The plan canvas is f
 
 ## Job input mode
 
-**Job input** at the top of the app (and the sidebar) chooses how the job starts:
+**Job input** is a single control in the header (not repeated in the sidebar or phone menu). It chooses how the job starts:
 
 1. **Draw plan** — Konva millimetre canvas (default). Geometry drives automatic take-offs.
 2. **Manual** — type span, length, footprint, perimeter/eaves, partitions, heights, opening counts. No canvas.
 
-Both modes write the same take-off model. Calculators never care which mode produced span, eaves or opening counts. Switching maps what it can; you are warned only if typed sizes would be overwritten, or if Draw plan would leave calculators on an empty canvas. The last choice is stored in `localStorage`. Pitch and eaves overhang live once on roofing (also shown in Manual so you are not asked twice).
+Both modes write the same take-off model. Calculators never care which mode produced span, eaves or opening counts. Switching maps what it can. If typed sizes would be overwritten, or if Draw plan would leave calculators on an empty canvas, an inline prompt asks you to choose — the page does not use a blocking dialog for that. Typed values stay put until you confirm. The last choice is stored in `localStorage`. Pitch and eaves overhang live once on roofing (also shown in Manual so you are not asked twice).
+
+**Span** is the shorter side. For a 5 m × 10 m rectangle, enter span **5 m** and building length **10 m** (50 m² footprint, 30 m perimeter). Manual mode shows a small diagram of that example.
 
 ## What this app does
 
 1. **Floor plan editor (Konva)** — rectangular building, external walls, partitions, doorways and openings (40 px = 1 m, snap 100 mm). Internal partitions snap to wall endpoints, intersections and faces (mouse and touch) with a snap marker; type a length in mm or m from a selected internal wall or after tapping one; a live metre/mm HUD follows the cursor while drawing; internals cannot cross other internals or the external outline (they clamp to a T-junction). **Add external skin** draws the outer masonry leaf outside the inner/loadbearing line across a UK cavity (default 100 mm, editable) and writes that cavity into structure / external-wall take-offs without changing eaves or footprint.
 2. **Roofing — coverings + carpentry** (cut / truss) plus opt-in cut list. Dormers, rooflights and snow guards have sizes that change tiles, battens, felt, valleys and clips.
 3. **Fascias, soffits & guttering** — PVCU or timber (timber paint + tins). Guttering materials and downpipes.
-4. **Building structure** — masonry or timber frame; skins unlock materials; block outer → render; steel-brick hybrid flags an SE.
-5. **Windows & doors** — numbered schedule (WG1, FD1…), photos, glazing, 2D mock-up PDF.
+4. **Building structure** — masonry or timber frame; skins unlock materials; block outer → render; steel-brick hybrid flags an SE. Inner skin, outer skin, cavity and render are one build-up shared with External walls (both screens and both PDFs). If a saved job still disagrees, the section warns and offers to sync.
+5. **Windows & doors** — numbered schedule (WG1, FD1…), photos, glazing, 2D mock-up PDF. Add GF or FF doors, mark each door internal or external, optional room/position, and bulk-add repeated 762 × 2040 internal doors. Subtotals show GF/FF and internal/external.
 6. **Foundations to DPC** — strip or raft; substrate clay/sand/rock; DPC; spoil; SE flag.
 7. **Ground floor** — slab / beam & block / timber; Part L insulation; DPM; UFH / radon flags.
-8. **Internal walls** — timber / metal stud or block; board layers; door lintels.
+8. **Internal walls** — timber / metal stud or block; board layers; door lintels; insulation type and thickness (mineral wool, PIR or acoustic quilt). The same insulation is editable on Internal finishes.
 9. **First floor** — joists, noggins, strutting, herringbone, stair trimmers.
 10. **Stairs** — Part K-style rise/going/pitch checks (brief: 200 / 220 / 42°); red FAIL + suggestion; cut list.
-11. **External walls above DPC** — cavity, lintel schedule (Catnic vs concrete + padstones), cavity barriers.
-12. **Internal finishes** — board, skim, paint tins from wall/ceiling areas (openings deducted).
-13. **Skirting & architrave** — visual profile thumbnails, MDF/pine/oak, finishing PDF.
+11. **External walls above DPC** — the shared wall build-up (including render when the outer skin is block), cavity, lintel schedule (Catnic vs concrete + padstones), cavity barriers.
+12. **Internal finishes** — board, generic skim or multi-finish, paint tins from wall/ceiling areas (openings deducted), plus the internal-wall insulation quantity.
+13. **Skirting & architrave** — visual profile thumbnails including bullnose and arch / bullnose. Shape and depth are separate; the selected card shows the depth you typed, and a custom-depth label when that is not the catalogue size. MDF/pine/oak, finishing PDF.
 14. **Floor coverings** — **whole house** (footprint × storeys) **or room-by-room** (editable rooms: name, floor m², optional wall-tile m²; openings deducted from wall tile). Tile size, grout, waste 5–20%, grout/adhesive bags.
 15. **Plumbing & electrics** — materials guide only (not BS 7671 / heat-loss design).
 16. **Painting** — new plaster / existing / render coats; woodwork; external fascias/joinery.
 17. **Externals** — drive, fence, soakaway, 110 mm drainage.
 18. **Scaffolding** — bays, lifts, boards, hire from height + perimeter.
 
-UK units: **mm / m / £**. Figures are **take-off aids**, not structural design.
+UK units: **mm / m / £**. Figures are **take-off aids**, not structural design. Each calculator marks its defaults as provisional assumptions — review them before ordering.
 
 ## Whole-job PDF
 

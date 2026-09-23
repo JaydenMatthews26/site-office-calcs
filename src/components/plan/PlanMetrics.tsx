@@ -34,6 +34,9 @@ export function PlanMetrics({ geometry }: { geometry: DerivedGeometry }) {
       </div>
       <div className="hidden bg-card px-3 py-2 sm:block">
         <p className="text-[11px] text-ink-soft">{note}</p>
+        <p className="text-[11px] text-ink-soft">
+          Span is the shorter side. A 5 m × 10 m rectangle is span 5 m and length 10 m.
+        </p>
       </div>
     </div>
   )

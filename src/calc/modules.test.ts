@@ -94,6 +94,10 @@ describe('floors and partitions', () => {
     expect(r.lengthM).toBeCloseTo(6, 5)
     expect(r.lintels).toBe(1)
     expect(r.plasterboardSheets).toBeGreaterThan(0)
+    expect(r.insulationM3).toBe(0)
+    const wool = calcPartitions(g, { ...DEFAULT_PARTITIONS, insulation: 'mineral-wool', insulationThicknessMm: 100 }, 1)
+    expect(wool.insulationM3).toBeCloseTo(wool.areaM2 * 0.1, 5)
+    expect(wool.insulationLabel).toBe('Mineral wool')
   })
 
   it('adds trimmers around a stair opening on the first floor', () => {
@@ -139,6 +143,16 @@ describe('finishes, MEP, scaffold', () => {
     const r = calcFinishes(g, DEFAULT_FINISHES)
     expect(r.ceilingM2).toBeCloseTo(48, 5)
     expect(r.wallM2).toBeGreaterThan(0)
+    expect(r.skimLabel).toBe('Skim')
+  })
+
+  it('uses more compound bags for multi-finish than generic skim', () => {
+    const g = boxPlan(8000, 6000)
+    const generic = calcFinishes(g, { ...DEFAULT_FINISHES, skim: true, skimFinish: 'skim' })
+    const multi = calcFinishes(g, { ...DEFAULT_FINISHES, skim: true, skimFinish: 'multi-finish' })
+    expect(multi.skimLabel).toBe('Multi-finish')
+    expect(multi.compoundBags).toBeGreaterThan(generic.compoundBags)
+    expect(multi.skimM2).toBeCloseTo(generic.skimM2, 5)
   })
 
   it('sizes tiles with grout and 10% waste', () => {
@@ -188,6 +202,8 @@ describe('external walls lintels', () => {
         glazing: 'double',
         sillWidthMm: 150,
         subSillWidthMm: 150,
+        doorType: 'internal',
+        label: '',
       },
     ])
     expect(r.lintels[0].lengthMm).toBe(1500)

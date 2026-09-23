@@ -15,7 +15,17 @@ export type GroundFloorType = 'slab' | 'beam-block' | 'timber'
 export type PartitionType = 'timber-stud' | 'blockwork' | 'metal-stud'
 export type StairPlan = 'straight' | 'quarter-landing' | 'half-landing' | 'dogleg'
 export type SkirtingMaterial = 'mdf' | 'pine' | 'oak'
-export type SkirtingProfile = 'chamfer' | 'ovolo' | 'torus' | 'ogee' | 'pencil-round'
+export type SkirtingProfile =
+  | 'chamfer'
+  | 'ovolo'
+  | 'torus'
+  | 'ogee'
+  | 'pencil-round'
+  | 'bullnose'
+  | 'arch-bullnose'
+export type DoorType = 'internal' | 'external'
+export type PartitionInsulation = 'none' | 'mineral-wool' | 'pir' | 'acoustic-quilt'
+export type SkimFinish = 'skim' | 'multi-finish'
 export type FloorCoverKind = 'tile' | 'laminate' | 'carpet' | 'vinyl'
 export type FloorCoverMode = 'whole-house' | 'room-by-room'
 export type PipeSystem = 'copper' | 'hep2o'
@@ -58,6 +68,10 @@ export interface JoineryItem {
   glazing: GlazingKind
   sillWidthMm: number
   subSillWidthMm: number
+  /** Leaf type. Ignored for windows and rooflights. */
+  doorType: DoorType
+  /** Optional room or position, for example "Kitchen" or "Front door". */
+  label: string
 }
 
 export interface JoineryInputs {
@@ -105,6 +119,9 @@ export interface PartitionInputs {
   acoustic: boolean
   fireRating: boolean
   serviceVoid: boolean
+  /** Insulation in the partition cavity or as a lining. */
+  insulation: PartitionInsulation
+  insulationThicknessMm: number
 }
 
 export interface FirstFloorInputs {
@@ -136,6 +153,9 @@ export interface ExternalWallInputs {
   insulationMm: number
   innerBlock: InnerSkin
   outerSkin: OuterSkin
+  /** Shared with Building structure. Applied when the outer skin is block. */
+  renderKind: RenderKind
+  renderThicknessMm: number
   cavityBarriers: boolean
   fireStops: boolean
   lintelBearingMm: number
@@ -144,6 +164,8 @@ export interface ExternalWallInputs {
 export interface FinishesInputs {
   plasterboard: boolean
   skim: boolean
+  /** Generic skim or a multi-finish gypsum coat. Used when skim is on. */
+  skimFinish: SkimFinish
   paint: boolean
   artex: boolean
   coving: boolean
@@ -155,7 +177,10 @@ export interface FinishesInputs {
 }
 
 export interface SkirtingInputs {
+  /** Skirting shape. Depth is separate — see depthMm. */
   profile: SkirtingProfile
+  /** Architrave shape. Depth is separate — see architraveDepthMm. */
+  architraveProfile: SkirtingProfile
   material: SkirtingMaterial
   depthMm: number
   architraveDepthMm: number
@@ -301,6 +326,8 @@ export const DEFAULT_PARTITIONS: PartitionInputs = {
   acoustic: false,
   fireRating: false,
   serviceVoid: false,
+  insulation: 'none',
+  insulationThicknessMm: 100,
 }
 
 export const DEFAULT_FIRST_FLOOR: FirstFloorInputs = {
@@ -331,6 +358,8 @@ export const DEFAULT_EXTERNAL_WALLS: ExternalWallInputs = {
   insulationMm: 150,
   innerBlock: 'lightweight-block',
   outerSkin: 'brick',
+  renderKind: 'sand-cement',
+  renderThicknessMm: 15,
   cavityBarriers: true,
   fireStops: true,
   lintelBearingMm: 150,
@@ -339,6 +368,7 @@ export const DEFAULT_EXTERNAL_WALLS: ExternalWallInputs = {
 export const DEFAULT_FINISHES: FinishesInputs = {
   plasterboard: true,
   skim: true,
+  skimFinish: 'skim',
   paint: true,
   artex: false,
   coving: false,
@@ -351,6 +381,7 @@ export const DEFAULT_FINISHES: FinishesInputs = {
 
 export const DEFAULT_SKIRTING: SkirtingInputs = {
   profile: 'chamfer',
+  architraveProfile: 'chamfer',
   material: 'mdf',
   depthMm: 119,
   architraveDepthMm: 69,
@@ -446,6 +477,8 @@ export function emptyJoineryItem(kind: JoineryKind, storey: JoineryStorey, code:
     storey,
     photoDataUrl: null,
     glazing: 'double',
+    doorType: 'internal',
+    label: '',
     ...sizes,
   }
 }

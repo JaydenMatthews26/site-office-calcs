@@ -9,7 +9,7 @@ import { PlanToolbar } from './PlanToolbar'
 
 export function PlanWorkspace() {
   const inputMode = useJobStore((s) => s.inputMode)
-  const setInputMode = useJobStore((s) => s.setInputMode)
+  const requestInputMode = useJobStore((s) => s.requestInputMode)
   const geometry = useGeometry()
   const [tool, setTool] = useState<DrawTool>('rect')
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null)
@@ -31,7 +31,7 @@ export function PlanWorkspace() {
         <button
           type="button"
           className="font-semibold text-accent underline"
-          onClick={() => setInputMode('manual')}
+          onClick={() => requestInputMode('manual')}
         >
           Manual mode
         </button>{' '}

@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { SECTIONS, sectionById } from '../../sections/registry'
 import { useJobStore } from '../../store/useJobStore'
-import { IncludeToggle } from '../ui/Fields'
+import { IncludeToggle, InlineConfirm } from '../ui/Fields'
 import { JobInputModeToggle } from './JobInputModeToggle'
+import { InputModePrompt } from './InputModePrompt'
 import { WholeJobExportButton } from './WholeJobExportButton'
 
 const MD_QUERY = '(min-width: 768px)'
@@ -13,6 +14,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const active = useJobStore((s) => s.activeSectionId)
   const resetJob = useJobStore((s) => s.resetJob)
   const [navOpen, setNavOpen] = useState(false)
+  const [isMd, setIsMd] = useState(() => window.matchMedia(MD_QUERY).matches)
   const closeRef = useRef<HTMLButtonElement>(null)
   const drawerTitleId = useId()
   const activeSection = sectionById(active)
@@ -20,8 +22,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const mq = window.matchMedia(MD_QUERY)
     const onChange = () => {
+      setIsMd(mq.matches)
       if (mq.matches) setNavOpen(false)
     }
+    setIsMd(mq.matches)
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
   }, [])
@@ -84,23 +88,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 Close
               </button>
             </div>
-            <div className="border-b border-white/10 px-4 py-3">
-              <JobInputModeToggle variant="sidebar" />
-            </div>
             <SectionNav onNavigate={() => setNavOpen(false)} />
             <div className="border-t border-white/10 px-4 py-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.confirm('Reset this job? Local data for Site Office Calcs will be cleared.')) {
-                    resetJob()
-                    setNavOpen(false)
-                  }
+              <ResetJobButton
+                tone="dark"
+                onReset={() => {
+                  resetJob()
+                  setNavOpen(false)
                 }}
-                className="touch-target w-full rounded-md border border-white/20 px-3 text-sm text-paper"
-              >
-                Reset job
-              </button>
+              />
               <p className="mt-2 text-[11px] text-white/45">Saved in this browser only. No cloud, no account.</p>
             </div>
           </aside>
@@ -138,38 +134,33 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
             </label>
           </div>
-          <div className="mt-2 flex items-stretch gap-2 md:hidden">
-            <div className="min-w-0 flex-1">
+          {isMd ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex min-w-[200px] flex-1 flex-col gap-1">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Job name</span>
+                <input
+                  value={jobName}
+                  onChange={(e) => setJobName(e.target.value)}
+                  className="touch-target rounded-md border border-line bg-paper px-3 text-base font-medium outline-none focus:border-accent"
+                />
+              </label>
               <JobInputModeToggle variant="header" />
+              <p className="hidden max-w-sm pb-1 text-xs leading-relaxed text-ink-soft lg:block">
+                One take-off model. Every calculator reads span, length, footprint, eaves and openings from it.
+              </p>
+              <WholeJobExportButton />
+              <ResetJobButton onReset={resetJob} />
             </div>
-            <WholeJobExportButton className="shrink-0" />
-          </div>
-
-          <div className="hidden md:flex md:flex-wrap md:items-end md:gap-3">
-            <label className="flex min-w-[200px] flex-1 flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">Job name</span>
-              <input
-                value={jobName}
-                onChange={(e) => setJobName(e.target.value)}
-                className="touch-target rounded-md border border-line bg-paper px-3 text-base font-medium outline-none focus:border-accent"
-              />
-            </label>
-            <JobInputModeToggle variant="header" />
-            <p className="hidden max-w-sm pb-1 text-xs leading-relaxed text-ink-soft lg:block">
-              One take-off model. Every calculator reads span, length, footprint, eaves and openings from it.
-            </p>
-            <WholeJobExportButton />
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm('Reset this job? Local data for Site Office Calcs will be cleared.')) {
-                  resetJob()
-                }
-              }}
-              className="touch-target rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft hover:border-accent hover:text-accent"
-            >
-              Reset job
-            </button>
+          ) : (
+            <div className="mt-2 flex items-stretch gap-2">
+              <div className="min-w-0 flex-1">
+                <JobInputModeToggle variant="header" />
+              </div>
+              <WholeJobExportButton className="shrink-0" />
+            </div>
+          )}
+          <div className="mt-2">
+            <InputModePrompt />
           </div>
         </header>
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
@@ -184,10 +175,39 @@ function BrandBlock() {
       <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-accent">Local take-off</p>
       <h1 className="mt-1 text-xl font-semibold tracking-tight">Site Office Calcs</h1>
       <p className="mt-2 text-xs leading-relaxed text-white/65">
-        Independent of My Site Office. Plans and figures stay on this device.
+        Independent of My Site Office. Plans and figures stay on this device. Draw or Manual is the header control.
       </p>
-      <JobInputModeToggle variant="sidebar" />
     </div>
+  )
+}
+
+function ResetJobButton({ onReset, tone = 'light' }: { onReset: () => void; tone?: 'light' | 'dark' }) {
+  const [armed, setArmed] = useState(false)
+  if (armed) {
+    return (
+      <InlineConfirm
+        message="Reset this job? Local data for Site Office Calcs will be cleared."
+        confirmLabel="Reset job"
+        onConfirm={() => {
+          setArmed(false)
+          onReset()
+        }}
+        onCancel={() => setArmed(false)}
+      />
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setArmed(true)}
+      className={
+        tone === 'dark'
+          ? 'touch-target w-full rounded-md border border-white/20 px-3 text-sm text-paper'
+          : 'touch-target rounded-md border border-line px-3 py-1.5 text-sm text-ink-soft hover:border-accent hover:text-accent'
+      }
+    >
+      Reset job
+    </button>
   )
 }
 

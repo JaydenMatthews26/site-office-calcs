@@ -5,6 +5,7 @@ import { applyTypedLength, lengthOrigin, MIN_WALL_LEN_MM } from '../../geometry/
 import type { DrawTool } from '../../types/job'
 import { DEFAULT_OUTER_SKIN } from '../../types/job'
 import { useJobStore } from '../../store/useJobStore'
+import { InlineConfirm } from '../ui/Fields'
 
 const TOOLS: { id: DrawTool; label: string; short: string; hint: string }[] = [
   { id: 'select', label: 'Select', short: 'Select', hint: 'Tap a wall or opening' },
@@ -46,6 +47,7 @@ export function PlanToolbar({
   const walls = useJobStore((s) => s.plan.walls)
   const updateWall = useJobStore((s) => s.updateWall)
   const selectedWall = selectedWallId ? (walls.find((w) => w.id === selectedWallId) ?? null) : null
+  const [confirmClear, setConfirmClear] = useState(false)
   const [lengthText, setLengthText] = useState('')
   const [lengthFrom, setLengthFrom] = useState<'a' | 'b'>('a')
   const [lengthInvalid, setLengthInvalid] = useState(false)
@@ -194,18 +196,26 @@ export function PlanToolbar({
             Delete opening
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm('Clear the plan? Roofing will lose derived lengths until you redraw.')) {
+        {confirmClear ? (
+          <InlineConfirm
+            message="Clear the plan? Roofing loses derived lengths until you redraw."
+            confirmLabel="Clear plan"
+            onConfirm={() => {
               clearPlan()
               onClearSelection()
-            }
-          }}
-          className="touch-target shrink-0 rounded-md border border-line px-3 text-sm text-ink-soft md:ml-auto"
-        >
-          Clear plan
-        </button>
+              setConfirmClear(false)
+            }}
+            onCancel={() => setConfirmClear(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmClear(true)}
+            className="touch-target shrink-0 rounded-md border border-line px-3 text-sm text-ink-soft md:ml-auto"
+          >
+            Clear plan
+          </button>
+        )}
         <label className="flex shrink-0 items-center gap-2 text-xs text-ink-soft">
           Storeys
           <input

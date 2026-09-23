@@ -8,9 +8,15 @@ export interface JoineryResult {
   gfWindows: number
   gfDoors: number
   ffWindows: number
+  ffDoors: number
+  internalDoors: number
+  externalDoors: number
   rooflights: number
   totalAreaM2: number
 }
+
+/** Repeated internal door leaf used by the bulk-add helper. */
+export const BULK_INTERNAL_DOOR_MM = { widthMm: 762, heightMm: 2040 } as const
 
 export interface JoineryTypicalSizes {
   doorWidthMm: number
@@ -26,9 +32,38 @@ export const DEFAULT_JOINERY_SIZES: JoineryTypicalSizes = {
   windowHeightMm: OPENING_HEIGHT_MM,
 }
 
-function nextCode(items: JoineryItem[], prefix: string): string {
+export function joineryCodePrefix(item: Pick<JoineryItem, 'kind' | 'storey'>): string {
+  if (item.kind === 'door') return 'FD'
+  if (item.kind === 'rooflight') return 'RL'
+  if (item.storey === 'ff') return 'FW'
+  return 'WG'
+}
+
+export function nextJoineryCode(items: JoineryItem[], prefix: string): string {
   const n = items.filter((i) => i.code.startsWith(prefix)).length + 1
   return `${prefix}${n}`
+}
+
+function nextCode(items: JoineryItem[], prefix: string): string {
+  return nextJoineryCode(items, prefix)
+}
+
+/** Append N internal 762 × 2040 doors on one storey. Existing rows are kept. */
+export function appendInternalDoors(
+  items: JoineryItem[],
+  count: number,
+  storey: 'gf' | 'ff',
+): JoineryItem[] {
+  const next = [...items]
+  const n = Math.max(0, Math.floor(count))
+  for (let i = 0; i < n; i++) {
+    const it = emptyJoineryItem('door', storey, nextCode(next, 'FD'))
+    it.widthMm = BULK_INTERNAL_DOOR_MM.widthMm
+    it.heightMm = BULK_INTERNAL_DOOR_MM.heightMm
+    it.doorType = 'internal'
+    next.push(it)
+  }
+  return next
 }
 
 /**
@@ -48,6 +83,8 @@ export function buildJoinerySchedule(plan: Plan, input: JoineryInputs): JoineryI
         const it = emptyJoineryItem('door', 'gf', nextCode(items, 'FD'))
         it.widthMm = o.widthMm
         it.heightMm = o.heightMm
+        const wall = plan.walls.find((w) => w.id === o.wallId)
+        it.doorType = wall?.kind === 'partition' ? 'internal' : 'external'
         items.push(it)
       } else {
         const it = emptyJoineryItem('window', 'gf', nextCode(items, 'WG'))
@@ -117,12 +154,16 @@ export function calcJoinery(
 ): JoineryResult {
   const items =
     input.items.length > 0 ? input.items : syncJoineryFromGeometry(plan, geometry, sizes)
+  const doors = items.filter((i) => i.kind === 'door')
   const gfWindows = items.filter((i) => i.kind === 'window' && i.storey === 'gf').length
-  const gfDoors = items.filter((i) => i.kind === 'door' && i.storey === 'gf').length
+  const gfDoors = doors.filter((i) => i.storey === 'gf').length
   const ffWindows = items.filter((i) => i.kind === 'window' && i.storey === 'ff').length
+  const ffDoors = doors.filter((i) => i.storey === 'ff').length
+  const internalDoors = doors.filter((i) => i.doorType !== 'external').length
+  const externalDoors = doors.filter((i) => i.doorType === 'external').length
   const rooflights = items.filter((i) => i.kind === 'rooflight').length
   const totalAreaM2 = items.reduce((acc, it) => acc + (it.widthMm * it.heightMm) / 1e6, 0)
-  return { items, gfWindows, gfDoors, ffWindows, rooflights, totalAreaM2 }
+  return { items, gfWindows, gfDoors, ffWindows, ffDoors, internalDoors, externalDoors, rooflights, totalAreaM2 }
 }
 
 export function syncJoineryFromPlan(plan: Plan): JoineryItem[] {

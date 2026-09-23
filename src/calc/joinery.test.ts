@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_MANUAL, DEFAULT_PLAN } from '../types/job'
 import { deriveGeometry } from '../geometry/derive'
 import { geometryFromManual } from '../geometry/effective'
-import { calcJoinery, seedJoineryFromCounts, syncJoineryFromGeometry } from './joinery'
-import { DEFAULT_JOINERY } from '../types/modules'
+import { appendInternalDoors, calcJoinery, seedJoineryFromCounts, syncJoineryFromGeometry } from './joinery'
+import { DEFAULT_JOINERY, emptyJoineryItem } from '../types/modules'
 import type { Wall } from '../types/job'
 
 function boxPlan(w: number, d: number) {
@@ -55,5 +55,31 @@ describe('joinery schedule', () => {
     })
     expect(r.gfWindows).toBe(3)
     expect(r.gfDoors).toBe(2)
+    expect(r.ffDoors).toBe(0)
+    expect(r.internalDoors).toBe(2)
+    expect(r.externalDoors).toBe(0)
+  })
+
+  it('counts GF/FF doors and internal/external leaves, including a 762 bulk add', () => {
+    const g = geometryFromManual({ ...DEFAULT_MANUAL, spanMm: 5000, lengthMm: 10000 })
+    let items = appendInternalDoors([], 4, 'gf')
+    items = appendInternalDoors(items, 4, 'ff')
+    const front = emptyJoineryItem('door', 'gf', 'FD9')
+    front.doorType = 'external'
+    front.widthMm = 762
+    front.heightMm = 2040
+    front.label = 'Front'
+    const back = emptyJoineryItem('door', 'gf', 'FD10')
+    back.doorType = 'external'
+    back.widthMm = 762
+    back.heightMm = 2040
+    back.label = 'Rear'
+    items = [...items, front, back]
+    expect(items.filter((i) => i.doorType === 'internal').every((i) => i.widthMm === 762 && i.heightMm === 2040)).toBe(true)
+    const r = calcJoinery(DEFAULT_PLAN, g, { ...DEFAULT_JOINERY, items })
+    expect(r.gfDoors).toBe(6)
+    expect(r.ffDoors).toBe(4)
+    expect(r.internalDoors).toBe(8)
+    expect(r.externalDoors).toBe(2)
   })
 })

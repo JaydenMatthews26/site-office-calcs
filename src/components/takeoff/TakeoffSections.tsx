@@ -9,7 +9,8 @@ import { calcMep } from '../../calc/mep'
 import { calcPainting } from '../../calc/painting'
 import { calcPartitions, partitionDoorCount } from '../../calc/partitions'
 import { calcScaffold } from '../../calc/scaffold'
-import { calcSkirting, SKIRTING_PROFILES } from '../../calc/skirting'
+import { calcSkirting, isCustomDepth, profileDepthLabel, SKIRTING_PROFILES } from '../../calc/skirting'
+import type { SkirtingProfile } from '../../types/modules'
 import { calcStairs } from '../../calc/stairs'
 import { formatGBP, formatM, formatM2, formatM3 } from '../../calc/units'
 import { useGeometry } from '../../hooks/useGeometry'
@@ -31,6 +32,7 @@ import { useJobStore } from '../../store/useJobStore'
 import { CalcSection } from '../section/CalcSection'
 import { CheckField, Notes, NumberField, Panel, SelectField, Stat } from '../ui/Fields'
 import { geomBlurb, jobState } from './geom'
+import { WallBuildUpNotice } from './WallBuildUpNotice'
 
 export function FoundationsSection() {
   const g = useGeometry()
@@ -151,6 +153,24 @@ export function PartitionsSection() {
         <CheckField label="Acoustic" checked={input.acoustic} onChange={(acoustic) => patch({ acoustic })} />
         <CheckField label="Fire rating" checked={input.fireRating} onChange={(fireRating) => patch({ fireRating })} />
         <CheckField label="Service void" checked={input.serviceVoid} onChange={(serviceVoid) => patch({ serviceVoid })} />
+        <SelectField
+          label="Insulation"
+          value={input.insulation}
+          onChange={(e) => patch({ insulation: e.target.value as typeof input.insulation })}
+        >
+          <option value="none">None</option>
+          <option value="mineral-wool">Mineral wool</option>
+          <option value="pir">PIR</option>
+          <option value="acoustic-quilt">Acoustic quilt</option>
+        </SelectField>
+        <NumberField
+          label="Insulation thickness"
+          unit="mm"
+          min={0}
+          value={input.insulationThicknessMm}
+          hint="Internal walls — same setting as Internal finishes"
+          onChange={(e) => patch({ insulationThicknessMm: Number(e.target.value) })}
+        />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Length / area" value={`${formatM(r.lengthM)} · ${formatM2(r.areaM2)}`} />
@@ -158,6 +178,11 @@ export function PartitionsSection() {
         <Stat label="Blocks" value={String(r.blocks)} />
         <Stat label="PB sheets" value={String(r.plasterboardSheets)} />
         <Stat label="Doors / lintels" value={`${r.doorsOnPartitions} / ${r.lintels}`} hint={`${r.doubledStuds} doubled studs`} />
+        <Stat
+          label="Insulation"
+          value={r.insulation === 'none' ? 'None' : formatM3(r.insulationM3)}
+          hint={r.insulation === 'none' ? 'Set a type to quantify' : `${r.insulationLabel} · ${r.insulationThicknessMm} mm`}
+        />
       </div>
     </CalcSection>
   )
@@ -265,18 +290,28 @@ export function ExternalWallsSection() {
   const r = useMemo(() => calcExternalWalls(g, input, joinery.items), [g, input, joinery.items])
   return (
     <CalcSection id="external-walls" title="External walls above DPC" blurb={geomBlurb(g)} exportLabel="Export walls PDF" onExport={() => exportExternalWallsPdf(jobState(), g, r)} footer={<Notes notes={r.notes} />}>
+      <WallBuildUpNotice />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <NumberField label="Cavity" unit="mm" value={input.cavityMm} onChange={(e) => patch({ cavityMm: Number(e.target.value) })} />
         <NumberField label="Insulation (Part L)" unit="mm" value={input.insulationMm} onChange={(e) => patch({ insulationMm: Number(e.target.value) })} />
-        <SelectField label="Inner" value={input.innerBlock} onChange={(e) => patch({ innerBlock: e.target.value as typeof input.innerBlock })}>
+        <SelectField label="Inner skin" value={input.innerBlock} onChange={(e) => patch({ innerBlock: e.target.value as typeof input.innerBlock })}>
           <option value="lightweight-block">Lightweight block</option>
           <option value="dense-block">Dense block</option>
           <option value="brick">Brick</option>
         </SelectField>
-        <SelectField label="Outer" value={input.outerSkin} onChange={(e) => patch({ outerSkin: e.target.value as typeof input.outerSkin })}>
-          <option value="brick">Brick (Catnic lintels)</option>
-          <option value="block">Block (concrete lintels)</option>
+        <SelectField label="Outer skin" value={input.outerSkin} onChange={(e) => patch({ outerSkin: e.target.value as typeof input.outerSkin })}>
+          <option value="brick">Brick (no render)</option>
+          <option value="block">Block (render)</option>
         </SelectField>
+        {input.outerSkin === 'block' ? (
+          <>
+            <SelectField label="Render" value={input.renderKind} onChange={(e) => patch({ renderKind: e.target.value as typeof input.renderKind })}>
+              <option value="sand-cement">Sand-cement</option>
+              <option value="k-rend">K-rend</option>
+            </SelectField>
+            <NumberField label="Render thickness" unit="mm" value={input.renderThicknessMm} onChange={(e) => patch({ renderThicknessMm: Number(e.target.value) })} />
+          </>
+        ) : null}
         <NumberField label="Lintel bearing" unit="mm" value={input.lintelBearingMm} onChange={(e) => patch({ lintelBearingMm: Number(e.target.value) })} />
         <CheckField label="Cavity barriers" checked={input.cavityBarriers} onChange={(cavityBarriers) => patch({ cavityBarriers })} />
         <CheckField label="Fire stops" checked={input.fireStops} onChange={(fireStops) => patch({ fireStops })} />
@@ -286,7 +321,9 @@ export function ExternalWallsSection() {
         <Stat label="Insulation" value={formatM3(r.insulationM3)} />
         <Stat label="Inner / outer" value={`${r.innerBlocks} / ${r.outerUnits}`} />
         <Stat label="Barriers / stops" value={`${r.cavityBarriersM.toFixed(1)} / ${r.fireStopsM.toFixed(1)} m`} />
+        {r.renderM2 > 0 ? <Stat label="Render" value={formatM2(r.renderM2)} hint={formatM3(r.renderM3)} /> : null}
       </div>
+      <p className="text-xs text-ink-soft">Brick outer uses Catnic lintels. Block outer uses concrete lintels and the shared render.</p>
       {r.lintels.length ? (
         <Panel title="Lintel schedule">
           <table className="w-full text-left text-sm">
@@ -322,8 +359,10 @@ export function ExternalWallsSection() {
 export function FinishesSection() {
   const g = useGeometry()
   const input = useJobStore((s) => s.finishes)
+  const partitions = useJobStore((s) => s.partitions)
   const patch = useJobStore((s) => s.patchFinishes)
-  const r = useMemo(() => calcFinishes(g, input), [g, input])
+  const patchPartitions = useJobStore((s) => s.patchPartitions)
+  const r = useMemo(() => calcFinishes(g, input, partitions), [g, input, partitions])
   return (
     <CalcSection id="finishes" title="Internal finishes" blurb={geomBlurb(g)} exportLabel="Export finishes PDF" onExport={() => exportFinishesPdf(jobState(), g, r)} footer={<Notes notes={r.notes} />}>
       <div className="flex flex-wrap gap-4">
@@ -334,10 +373,49 @@ export function FinishesSection() {
         <CheckField label="Coving" checked={input.coving} onChange={(coving) => patch({ coving })} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {input.skim ? (
+          <SelectField
+            label="Skim finish"
+            value={input.skimFinish}
+            onChange={(e) => patch({ skimFinish: e.target.value as typeof input.skimFinish })}
+          >
+            <option value="skim">Skim (generic)</option>
+            <option value="multi-finish">Multi-finish</option>
+          </SelectField>
+        ) : null}
+        <SelectField
+          label="Internal wall insulation"
+          value={partitions.insulation}
+          onChange={(e) => patchPartitions({ insulation: e.target.value as typeof partitions.insulation })}
+        >
+          <option value="none">None</option>
+          <option value="mineral-wool">Mineral wool</option>
+          <option value="pir">PIR</option>
+          <option value="acoustic-quilt">Acoustic quilt</option>
+        </SelectField>
+        <NumberField
+          label="Insulation thickness"
+          unit="mm"
+          min={0}
+          value={partitions.insulationThicknessMm}
+          hint="Same setting as Internal walls"
+          onChange={(e) => patchPartitions({ insulationThicknessMm: Number(e.target.value) })}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Walls" value={formatM2(r.wallM2)} hint="Openings deducted" />
         <Stat label="Ceiling" value={formatM2(r.ceilingM2)} />
         <Stat label="PB sheets" value={String(r.pbSheets)} />
-        <Stat label="Skim / compound" value={`${formatM2(r.skimM2)} · ${r.compoundBags} bags`} />
+        <Stat
+          label="Skim / compound"
+          value={`${formatM2(r.skimM2)} · ${r.compoundBags} bags`}
+          hint={input.skim ? `${r.skimLabel} · ${r.compoundM2PerBag} m²/bag` : 'Skim off'}
+        />
+        <Stat
+          label="Insulation"
+          value={r.insulation === 'none' ? 'None' : formatM3(r.insulationM3)}
+          hint={r.insulation === 'none' ? 'Internal walls' : `${r.insulationLabel} · ${r.insulationThicknessMm} mm`}
+        />
         <Stat label="Paint tins" value={String(r.paintTins)} hint={`${r.paintLitres.toFixed(1)} L`} />
         <Stat label="Coving" value={formatM(r.covingM)} />
       </div>
@@ -355,9 +433,83 @@ export function SkirtingSection() {
   )
   return (
     <CalcSection id="skirting" title="Skirting & architrave" blurb={geomBlurb(g)} exportLabel="Export finishing schedule PDF" onExport={() => exportSkirtingPdf(jobState(), g, r)} footer={<Notes notes={r.notes} />}>
-      <div role="radiogroup" aria-label="Skirting profile" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <p className="text-sm text-ink-soft">
+        Shape and depth are separate. The selected card shows the depth in the field, and marks custom depth when that
+        differs from the catalogue size.
+      </p>
+      <ProfileCards
+        label="Skirting profile"
+        selected={input.profile}
+        depthMm={input.depthMm}
+        onSelect={(id) => {
+          const next = SKIRTING_PROFILES.find((p) => p.id === id)
+          patch({
+            profile: id,
+            depthMm: isCustomDepth(input.profile, input.depthMm) ? input.depthMm : (next?.typicalDepthMm ?? input.depthMm),
+          })
+        }}
+      />
+      <ProfileCards
+        label="Architrave profile"
+        selected={input.architraveProfile}
+        depthMm={input.architraveDepthMm}
+        onSelect={(id) => {
+          const next = SKIRTING_PROFILES.find((p) => p.id === id)
+          patch({
+            architraveProfile: id,
+            architraveDepthMm: isCustomDepth(input.architraveProfile, input.architraveDepthMm)
+              ? input.architraveDepthMm
+              : (next?.typicalDepthMm ?? input.architraveDepthMm),
+          })
+        }}
+      />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SelectField label="Material" value={input.material} onChange={(e) => patch({ material: e.target.value as typeof input.material })}>
+          <option value="mdf">MDF (default)</option>
+          <option value="pine">Pine</option>
+          <option value="oak">Oak</option>
+        </SelectField>
+        <NumberField
+          label="Skirting depth"
+          unit="mm"
+          value={input.depthMm}
+          hint={isCustomDepth(input.profile, input.depthMm) ? 'Custom depth' : 'Catalogue depth for this shape'}
+          onChange={(e) => patch({ depthMm: Number(e.target.value) })}
+        />
+        <NumberField
+          label="Architrave depth"
+          unit="mm"
+          value={input.architraveDepthMm}
+          hint={isCustomDepth(input.architraveProfile, input.architraveDepthMm) ? 'Custom depth' : 'Catalogue depth for this shape'}
+          onChange={(e) => patch({ architraveDepthMm: Number(e.target.value) })}
+        />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Skirting" value={formatM(r.skirtingM)} hint={`${r.skirtingLengths} lengths · ${r.skirtingLabel}`} />
+        <Stat label="Architrave" value={formatM(r.architraveM)} hint={`${r.architraveLengths} lengths · ${r.architraveLabel}`} />
+      </div>
+    </CalcSection>
+  )
+}
+
+function ProfileCards({
+  label,
+  selected,
+  depthMm,
+  onSelect,
+}: {
+  label: string
+  selected: SkirtingProfile
+  depthMm: number
+  onSelect: (id: SkirtingProfile) => void
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-ink-soft">{label}</p>
+      <div role="radiogroup" aria-label={label} className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {SKIRTING_PROFILES.map((p) => {
-          const on = p.id === input.profile
+          const on = p.id === selected
+          const depth = profileDepthLabel(p.id, depthMm, on)
           return (
             <button
               key={p.id}
@@ -367,37 +519,18 @@ export function SkirtingSection() {
               className={`touch-target flex flex-col items-center rounded-lg border px-2 py-2 text-xs ${
                 on ? 'border-ink bg-paper font-semibold text-ink' : 'border-line text-ink-soft hover:border-ink/40'
               }`}
-              onClick={() =>
-                patch({
-                  profile: p.id,
-                  depthMm: p.typicalDepthMm,
-                  architraveDepthMm: Math.max(69, p.typicalDepthMm - 50),
-                })
-              }
+              onClick={() => onSelect(p.id)}
             >
               <svg viewBox="0 0 40 24" className="h-10 w-16 stroke-ink fill-none" aria-hidden>
                 <path d={p.path} />
               </svg>
               {p.label}
-              <span className="font-mono text-[10px] text-ink-soft">{p.typicalDepthMm} mm</span>
+              <span className="font-mono text-[10px] text-ink-soft">{depth.text}</span>
             </button>
           )
         })}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SelectField label="Material" value={input.material} onChange={(e) => patch({ material: e.target.value as typeof input.material })}>
-          <option value="mdf">MDF (default)</option>
-          <option value="pine">Pine</option>
-          <option value="oak">Oak</option>
-        </SelectField>
-        <NumberField label="Skirting depth" unit="mm" value={input.depthMm} onChange={(e) => patch({ depthMm: Number(e.target.value) })} />
-        <NumberField label="Architrave depth" unit="mm" value={input.architraveDepthMm} hint="One size down" onChange={(e) => patch({ architraveDepthMm: Number(e.target.value) })} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Skirting" value={formatM(r.skirtingM)} hint={`${r.skirtingLengths} lengths`} />
-        <Stat label="Architrave" value={formatM(r.architraveM)} hint={`${r.architraveLengths} lengths`} />
-      </div>
-    </CalcSection>
+    </div>
   )
 }
 

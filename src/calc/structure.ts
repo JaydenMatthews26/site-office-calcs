@@ -1,6 +1,7 @@
 import type { DerivedGeometry } from '../geometry/derive'
 import type { JoineryInputs, StructureInputs } from '../types/modules'
 import { ceilDiv, mmToM, withWaste } from './units'
+import { describeWallBuildUp, wallBuildUpFromStructure } from './wallBuildUp'
 
 export function elevationAreas(
   g: DerivedGeometry,
@@ -124,6 +125,9 @@ export function calcStructure(
     }
   }
 
+  if (input.frame === 'masonry') {
+    notes.push(`Shared wall build-up: ${describeWallBuildUp(wallBuildUpFromStructure(input))}.`)
+  }
   notes.push('Take-off aid only — not a substitute for Approved Document A or an engineer’s design.')
   return {
     grossElevationM2: grossM2,

@@ -13,6 +13,7 @@ import {
   effectiveGeometry,
   geometryFromManual,
   manualFromGeometry,
+  suggestRectangle,
   typicalFootprintM2,
   typicalPerimeterMm,
 } from './effective'
@@ -118,5 +119,12 @@ describe('effectiveGeometry', () => {
   it('suggests rectangular footprint and perimeter from span × length', () => {
     expect(typicalFootprintM2(6000, 8000)).toBe(48)
     expect(typicalPerimeterMm(6000, 8000)).toBe(28000)
+    const afterSpan = suggestRectangle(DEFAULT_MANUAL, 5000, 0)
+    const afterLength = suggestRectangle(afterSpan, 5000, 10000)
+    expect(afterLength.footprintM2).toBe(50)
+    expect(afterLength.externalLengthMm).toBe(30000)
+    const overridden = suggestRectangle({ ...afterLength, footprintM2: 40 }, 5000, 12000)
+    expect(overridden.footprintM2).toBe(40)
+    expect(overridden.externalLengthMm).toBe(34000)
   })
 })
